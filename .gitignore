@@ -1,0 +1,9 @@
+MTUOC-segmenterDIR.py
+MTUOC-bitext_mining-CPU.py
+MTUOC-bitext_mining-GPU.py
+MTUOC-PCorpus-rescorer-txt.py
+MTUOC-PCorpus-selector-txt.py
+corpusFromWikipedia_multiprocessingtest.py
+lid.176.bin
+database/*.sqlite
+dumps/*bz2
