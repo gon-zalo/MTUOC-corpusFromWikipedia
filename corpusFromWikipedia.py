@@ -1127,8 +1127,8 @@ def go():
         4. Rescore the corpora.
         5. Filter the rescored parallel segments. ''')
     
-    pipeline_parser.add_argument('lang1', help='Name or two letter ISO code of the first language.')
-    pipeline_parser.add_argument('lang2', help='Name or two letter ISO code of the second language.')
+    pipeline_parser.add_argument('lang1', help='Name or two letter ISO code of the source (first) language.')
+    pipeline_parser.add_argument('lang2', help='Name or two letter ISO code of the target (second) language.')
     pipeline_parser.add_argument("--outdir", help="Name of the output directory, default is: corpora. Language codes will be added after it, i.e.: corpora-lang1-lang2/", required=False)
     
     # CREATE OPTIONS
