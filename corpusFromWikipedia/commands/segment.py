@@ -1,5 +1,7 @@
 # segment functions
 from typing import (List, Set, Tuple, Dict, Optional)
+from utils.get_language import get_language
+
 class SrxSegmenter:
     """Handle segmentation with SRX regex format.
     """
@@ -118,22 +120,29 @@ def segment_corpus(args):
     import sys
     import os
     import subprocess
+    from pathlib import Path
     # accessing args
+    srxfile=args.srxfile
     if not srxfile:
         srxfile = 'segment.srx'
-    srxfile=args.srxfile
-    srxlang= args.srxlang
+    indir=args.indir
+    
+
+    indir_path_name = Path(indir).name
+    ending = indir_path_name[-2:]
+
+    srxlang_name, srxlang_code = get_language(ending)
+
     paramark=args.paramark
 
-    indir=args.indir
     outdir=args.outdir
 
-    srxlang = srxlang.title() # capitalizing the first letter since that's how it's written in the srx file
+    # srxlang = srxlang.title() # capitalizing the first letter since that's how it's written in the srx file
 
     rules = parse(srxfile)
     languages = list(rules.keys())
-    if not srxlang in languages:
-        print("Language ",srxlang," not available in ", srxfile)
+    if not srxlang_name in languages:
+        print("Language ",srxlang_name," not available in ", srxfile)
         print("Available languages:",", ".join(languages))
         sys.exit()
 
@@ -154,7 +163,7 @@ def segment_corpus(args):
 
                 sortida = open(outfile, "w", encoding="utf-8")
                 for linia in entrada:
-                    segments = segmenta(linia, srxfile, srxlang)
+                    segments = segmenta(linia, srxfile, srxlang_name)
                     if len(segments) > 0:
                         if paramark:
                             sortida.write("<p>\n")
@@ -163,14 +172,11 @@ def segment_corpus(args):
                 entrada.close()
                 sortida.close()
 
-                cmd = f'cat "{outfile}" | sort | uniq | shuf' # shouldnt this be outdir not outfile? we want to concatenate all the files in the output directory and the output file needs a name
-                resultat = subprocess.run(
+                cmd = f'cat {outdir}* | sort | uniq | shuf > unique-segments.txt' 
+                
+                subprocess.run(
                     cmd,
                     shell=True,
-                    capture_output=True,
-                    text=True
+                    check=True
                 )
-
-                with open(outfile, "w", encoding="utf-8") as f_out:
-                    f_out.write(resultat.stdout)
                 

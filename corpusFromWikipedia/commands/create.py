@@ -155,24 +155,9 @@ category_namespaces = {
     "zu": "Isigaba",
     "ast": "Categoría"
 }
+from utils.get_language import get_language
 
 # create functions
-def get_language(language):
-    import pycountry
-    # input is iso 2 letter code or full name of the language, output is name and 2 letter iso code
-    if len(language) == 2: # if language is 2 letter iso code
-        language_pyc = pycountry.languages.get(alpha_2=language)
-        language_code = language_pyc.alpha_2
-        language_name = language_pyc.name
-    elif len(language) > 2: # if language is the name of the language
-        for lang in pycountry.languages:
-            if lang.name.lower() == language.lower():
-                language_pyc = pycountry.languages.get(name=language)
-                language_code = language_pyc.alpha_2
-                language_name = language_pyc.name
-
-    return language_name, language_code
-
 def extract_text_from_wikitext(wikitext):
     import mwparserfromhell
     wikicode = mwparserfromhell.parse(wikitext)
@@ -185,10 +170,6 @@ def create_corpora(args):
     from pathlib import Path
     import os
     import sys
-    
-    # accessing args
-    # lang1 = args.lang1
-    # lang2 = args.lang2
 
     lang1_name, lang1_code = get_language(args.lang1)
     lang2_name, lang2_code = get_language(args.lang2)
@@ -199,18 +180,31 @@ def create_corpora(args):
         langs.append(lang2_code)
 
     dumps = args.dumps
+    if not dumps:
+        dumps = 'dumps/'
     dumps_path = Path(dumps)
 
     dumpL1 = next(dumps_path.glob(f'{lang1_code}*'), None)
     if dumpL1:
         print(f'Dump in {lang1_name} found: {str(dumpL1)}')
+    else:
+        print(f'{lang1_name} dump not found in directory.')
+
     dumpL2 = next(dumps_path.glob(f'{lang2_code}*'), None)
     if dumpL2:
         print(f'Dump in {lang2_name} found: {str(dumpL2)}')
+    else:
+        print(f'{lang2_name} dump not found in directory.')
+
 
     outdir = args.outdir
+    if not outdir:
+        outdir = f'corpora-{lang1_code}-{lang2_code}'
+    if outdir:
+        outdir = f'{outdir}-{lang1_code}-{lang2_code}'
+
     categories = args.categories
-    level = args.level
+    level = args.depth
     restrict = args.restrict
 
     categories_list = []
@@ -374,4 +368,5 @@ def create_corpora(args):
                             print("Page processed!")
                             pages_processed += 1
                             print(f"Processed {pages_processed} out of {len(usertitles_set)}")
+
     # return pagesdirpath # this return is doing nothing

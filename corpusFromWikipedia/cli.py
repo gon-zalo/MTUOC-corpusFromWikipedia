@@ -22,23 +22,23 @@ def cli():
     
 # CREATE SUBPARSER
     create_parser = subparsers.add_parser("create", help="Create parallel corpora from Wikipedia.", description="Create parallel corpora from Wikipedia dumps")
-    create_parser.add_argument('--lang1', action="store", dest="lang1", help='The language 1 code (two letter ISO code used in Wikipedia.)',required=True)
-    create_parser.add_argument('--lang2', action="store", dest="lang2", help='The language 2 code (two letter ISO code used in Wikipedia.)',required=False)
-    create_parser.add_argument("-c",'--categories', action="store", help='The categories to search for (a category or a list of categories separated by ",".',required=True)
-    create_parser.add_argument('--depth', action="store", dest="level", type=int, help='The category level depth.',required=True)
-    create_parser.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalents to L1 pages.')
-    create_parser.add_argument('--database', action="store", dest="database", help='The CCW sqlite database to use.',required=True)
-    create_parser.add_argument('--dumps', help='Wikipedia dumps path', required=True)   
-    create_parser.add_argument("-o",'--outdir', action="store", dest="outdir", help='The path to the output directory, where all the results will be stored.',required=True)
+    create_parser.add_argument('lang1', help='Name or two letter ISO code of the source language.')
+    create_parser.add_argument('lang2', help='Name or two letter ISO code of the target language.')
+    create_parser.add_argument("categories", action="store", help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,).')
+    create_parser.add_argument('depth', type=int, help='The category level depth.')
+    create_parser.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalents to L1 pages.', required=False)
+    create_parser.add_argument('--database', action="store", dest="database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite',required=False)
+    create_parser.add_argument('--dumps', help='Wikipedia dumps path. Default: dumps/', required=False)   
+    create_parser.add_argument('--outdir', help='Name of the output directory. Default: corpora-lang1-lang2/.',required=False)
     create_parser.set_defaults(func=create_corpora)
 
 # SEGMENT SUBPARSER
     segment_parser = subparsers.add_parser("segment", help="Segment the extracted texts.", description="Segment the corpora. Can be used on its own to segment all the files in one directory.")
-    segment_parser.add_argument("-i", "--indir", type=str, help="Path to the input directory.", required=False)
-    segment_parser.add_argument("-o", "--outdir", type=str, help="The output directory in which to save the segmented files. If it doesn't exist, it will be created", required=True)
-    segment_parser.add_argument("-s", "--srxfile", type=str, help="The SRX file to use", required=True)
-    segment_parser.add_argument("-l", "--srxlang", type=str, help="The language as stated in the SRX file, i.e. the name of the language.", required=True)
-    segment_parser.add_argument("-p", "--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
+    segment_parser.add_argument("indir", help="Folder where the corpus to segment is stored, i.e., the 'pages-lang' folder. The folder must have the two letter ISO code at the end.")
+    segment_parser.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", required=False)
+    # segment_parser.add_argument("-l", "--srxlang", type=str, help="The language as stated in the SRX file, i.e. the name of the language.", required=True)
+    segment_parser.add_argument("--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
+    segment_parser.add_argument("--outdir", type=str, help="The output directory in which to save the segmented files. If it doesn't exist, it will be created", required=True)
     segment_parser.set_defaults(func=segment_corpus)
 
 # ALIGN SUBPARSER
@@ -81,10 +81,11 @@ def cli():
     pipeline_parser.add_argument('lang1', help='Name or two letter ISO code of the source language.')
     pipeline_parser.add_argument('lang2', help='Name or two letter ISO code of the target language.')
     pipeline_parser.add_argument("--outdir", help="Name of the output directory, default is: corpora. Language codes will be added after it, i.e.: corpora-lang1-lang2/", required=False)
+    # pipeline_parser.add_argument('-mono', '--monolingual', help='Create and segment a monolingual corpus.')
     
     # CREATE OPTIONS
     create_group = pipeline_parser.add_argument_group("Create options")
-    create_group.add_argument('categories', help='Wikipedia categories to search for. Must be in between quotation marks ("") and separated by a comma (,) if there are more than one.')
+    create_group.add_argument('categories', help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,).')
     create_group.add_argument('depth', type=int, help='The category level depth.')
     create_group.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalent L1 pages.')
     create_group.add_argument("--database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite', required=False)

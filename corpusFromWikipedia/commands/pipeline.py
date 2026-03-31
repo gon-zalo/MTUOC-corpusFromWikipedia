@@ -1,11 +1,13 @@
 # pipeline function
-from .create import create_corpora, get_language
+from utils.get_language import get_language
+from .create import create_corpora
 from .segment import segment_corpus
 from .align import align_corpora
 from .rescore import rescore_corpus
 from .select import select_corpus
 from pathlib import Path
 import argparse
+# add monolingual/bilingual
 
 def pipeline(args):
 
@@ -16,10 +18,10 @@ def pipeline(args):
     lang1_name, lang1_code = get_language(lang1)
     lang2_name, lang2_code = get_language(lang2)
 
-    if not outdir:
-        outdir = f'corpora-{lang1_code}-{lang2_code}'
-    if outdir:
-        outdir = f'{outdir}-{lang1_code}-{lang2_code}'
+    # if not outdir:
+    #     outdir = f'corpora-{lang1_code}-{lang2_code}'
+    # if outdir:
+    #     outdir = f'{outdir}-{lang1_code}-{lang2_code}'
         
     root = Path(outdir)
     if not root.exists():
@@ -71,13 +73,13 @@ def pipeline(args):
     # segment corpora
     segment_args_lang1 = argparse.Namespace(
         srxfile=srxfile, 
-        srxlang=lang1_name, 
+        # srxlang=lang1_name, 
         paramark=paramark, 
         indir=root / f'pages-{lang1_code}', 
         outdir=root / f'segments-{lang1_code}')
     segment_args_lang2 = argparse.Namespace(
         srxfile=srxfile, 
-        srxlang=lang2_name, 
+        # srxlang=lang2_name, 
         paramark=paramark, 
         indir=root / f'pages-{lang2_code}', 
         outdir=root / f'segments-{lang2_code}')
