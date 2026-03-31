@@ -7,3 +7,5 @@ corpusFromWikipedia_multiprocessingtest.py
 lid.176.bin
 database/*.sqlite
 dumps/*bz2
+corpusFromWikipedia/__pycache__/
+corpusFromWikipedia/commands/__pycache__/
