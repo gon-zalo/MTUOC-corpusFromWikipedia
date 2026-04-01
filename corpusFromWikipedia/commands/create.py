@@ -155,7 +155,7 @@ category_namespaces = {
     "zu": "Isigaba",
     "ast": "Categoría"
 }
-from utils.get_language import get_language
+from ..utils.get_language import get_language
 
 # create functions
 def extract_text_from_wikitext(wikitext):

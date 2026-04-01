@@ -1,6 +1,6 @@
 # segment functions
 from typing import (List, Set, Tuple, Dict, Optional)
-from utils.get_language import get_language
+from ..utils.get_language import get_language
 
 class SrxSegmenter:
     """Handle segmentation with SRX regex format.
