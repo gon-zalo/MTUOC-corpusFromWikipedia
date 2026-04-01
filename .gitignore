@@ -10,3 +10,4 @@ dumps/*bz2
 corpusFromWikipedia/__pycache__/
 corpusFromWikipedia/commands/__pycache__/
 corpusFromWikipedia/utils/__pycache__/
+outputs/
