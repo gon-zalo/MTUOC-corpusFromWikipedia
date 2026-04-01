@@ -206,7 +206,8 @@ def create_corpora(args):
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-
+    print(f"Creating folder {outdir}")
+    
     categories = args.categories
     level = args.depth
     restrict = args.restrict
