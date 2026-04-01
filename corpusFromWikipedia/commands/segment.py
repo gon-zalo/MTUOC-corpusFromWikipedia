@@ -61,7 +61,7 @@ def parse(srx_filepath: str) -> Dict[str, Dict[str, List[Tuple[str, Optional[str
     :param srx_filepath: is soruce SRX file.
     :return: dict
     """
-    import lxml
+    import lxml.etree
 
     tree = lxml.etree.parse(srx_filepath)
     namespaces = {
@@ -116,67 +116,65 @@ def detect_encoding(file_path):
     result = from_path(file_path).best()
     return result.encoding if result else 'utf-8'
 
+def sort_uniq_shuf(segments_folder, lang_code, indir):
+    import subprocess
+    cmd = f'cat {segments_folder}/* | sort | uniq | shuf > {indir}/unique-segments-{lang_code}.txt' 
+    subprocess.run(
+        cmd,
+        shell=True,
+        check=True
+    )
+                
 def segment_corpus(args):
     import sys
-    import os
-    import subprocess
     from pathlib import Path
+    print("\nRunning segment command")
+
     # accessing args
     srxfile=args.srxfile
     if not srxfile:
         srxfile = 'segment.srx'
-    indir=args.indir
+    rules = parse(srxfile)
+    languages = list(rules.keys())
     
-
-    indir_path_name = Path(indir).name
-    ending = indir_path_name[-2:]
-
-    srxlang_name, srxlang_code = get_language(ending)
+    indir=args.indir
+    indir = Path(indir)
 
     paramark=args.paramark
 
     outdir=args.outdir
+    if not outdir:
+        outdir = indir
 
-    # srxlang = srxlang.title() # capitalizing the first letter since that's how it's written in the srx file
+    for folder in indir.iterdir(): # look for 'pages' folders inside the input directory
 
-    rules = parse(srxfile)
-    languages = list(rules.keys())
-    if not srxlang_name in languages:
-        print("Language ",srxlang_name," not available in ", srxfile)
-        print("Available languages:",", ".join(languages))
-        sys.exit()
+        if folder.is_dir() and folder.name.startswith("pages"):
+            print(f"\nFolder {folder.name} found")
 
-    print("Segmenting files...")
-    # print(indir)
-    for r, d, f in os.walk(indir):
-        for file in f:
-            # print("File found")
-            if file.endswith('.txt'):
-                fullpath = os.path.join(r, file)
-                # print(fullpath)
+            ending = folder.name[-2:]
+            srxlang_name, srxlang_code = get_language(ending)
+            if not srxlang_name in languages:
+                print("Language ",srxlang_name," not available in ", srxfile)
+                print("Available languages:",", ".join(languages))
+                sys.exit()
 
-                encoding = detect_encoding(fullpath)
-                entrada = open(fullpath, "r", encoding=encoding, errors="ignore")
+            print(f"Segmenting files in {srxlang_name}")
+            segments_folder = indir / f'segments-{srxlang_code}'
+            segments_folder.mkdir(parents=True, exist_ok=True)
 
-                outfile = fullpath.replace(indir, outdir)
-                os.makedirs(os.path.dirname(outfile), exist_ok=True)
+            for text_file in folder.rglob("*.txt"): # accessing all txt files
+                encoding = detect_encoding(text_file)
+                with open(text_file, "r", encoding=encoding, errors="ignore") as entrada:
+                    
+                    outfile = segments_folder / text_file.name
+                    
+                    with open(outfile, "w", encoding="utf-8") as sortida:
+                        # process file here
+                        for linia in entrada:
+                            segments = segmenta(linia, srxfile, srxlang_name)
+                            if len(segments) > 0:
+                                if paramark:
+                                    sortida.write("<p>\n")
+                                sortida.write(segments + "\n")
 
-                sortida = open(outfile, "w", encoding="utf-8")
-                for linia in entrada:
-                    segments = segmenta(linia, srxfile, srxlang_name)
-                    if len(segments) > 0:
-                        if paramark:
-                            sortida.write("<p>\n")
-                        sortida.write(segments + "\n")
-
-                entrada.close()
-                sortida.close()
-
-                cmd = f'cat {outdir}* | sort | uniq | shuf > unique-segments.txt' 
-                
-                subprocess.run(
-                    cmd,
-                    shell=True,
-                    check=True
-                )
-                
+            sort_uniq_shuf(segments_folder, srxlang_code, indir)
