@@ -38,15 +38,15 @@ def cli():
     segment_parser.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", required=False)
     # segment_parser.add_argument("-l", "--srxlang", type=str, help="The language as stated in the SRX file, i.e. the name of the language.", required=True)
     segment_parser.add_argument("--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
-    segment_parser.add_argument("--outdir", type=str, help="The output directory in which to save the segmented files. If it doesn't exist, it will be created", required=False)
+    segment_parser.add_argument("--outdir", type=str, help="Output directory in which to save the segmented files. If it doesn't exist, it will be created", required=False)
     segment_parser.set_defaults(func=segment_corpus)
 
 # ALIGN SUBPARSER
     align_parser = subparsers.add_parser("align", help="Perform bitext mining (alignment) between both corpora.", description="Mine parallel (translated) sentences from two lists of monolingual sentences.")
-    align_parser.add_argument("-i", "--input", nargs=2, metavar=("FILE1", "FILE2"), dest="input_files", help="Path to the two file paths that will be aligned", required=True)
-    align_parser.add_argument("-o", "--output", help="The output file path", required=True)
+    align_parser.add_argument("indir", help="Path to the folder with the unique segments files.")
     align_parser.add_argument("-dev", "--device", default="cpu", dest="device", help="Device used (GPU or CPU). Default is CPU.", required=False)
-    # align_parser.add_argument("--file-by-file", help="Align segments file by file, as opposed to in bulk" , default=True, action="store_true", required=False) # one or the other argument? check docs
+    # align_parser.add_argument("--file-by-file", help="Align segments file by file, as opposed to in bulk" , default=True, action="store_true", required=False) # not implemented
+    align_parser.add_argument("--outdir", help="Output directory in which to save the aligned segments files.", required=False)
     align_parser.set_defaults(func=align_corpora)
 
 # RESCORE SUBPARSER

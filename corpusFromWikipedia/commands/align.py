@@ -61,26 +61,48 @@ def file_open(filepath):
     #Function to allowing opening files based on file extension
     import gzip
     import lzma
-    if filepath.endswith('.gz'):
+    from pathlib import Path
+    if Path(filepath).name.endswith('.gz'):
         return gzip.open(filepath, 'rt', encoding='utf-8')
-    elif filepath.endswith('xz'):
+    elif Path(filepath).name.endswith('xz'):
         return lzma.open(filepath, 'rt', encoding='utf-8')
     else:
         return open(filepath, 'r', encoding='utf-8')
 
 def align_corpora(args):
-    print("Initializing corpora alignment...")
+    print("\nRunning align command")
     from sentence_transformers import SentenceTransformer, models
     import tqdm
     from sklearn.decomposition import PCA
     import torch
+    from pathlib import Path
     import lzma
     import numpy as np
 
     device = args.device
-    source_file = args.input_files[0]
-    target_file = args.input_files[1]
-    output = args.output
+    device = device.lower()
+    indir = args.indir
+
+    indir = Path(indir)
+
+    unique_segments_files = []
+    unique_segments_files_codes = []
+    print("\n")
+    for file in indir.iterdir():
+        if file.is_file() and file.name.startswith("unique-segments"):
+            print(f"Unique segments file {file.name} found")
+            unique_segments_files.append(file)
+            name = Path(file.name)
+            unique_segments_files_codes.append(name.stem[-2:])
+    print("\n")
+
+    source_file, target_file = unique_segments_files
+    source_file_code, target_file_code = unique_segments_files_codes
+    
+    outdir = args.outdir
+
+    if not outdir:
+        outdir = indir
 
     #Model we want to use for bitext mining. LaBSE achieves state-of-the-art performance
     model_name = 'LaBSE'
@@ -206,7 +228,8 @@ def align_corpora(args):
     print("Write sentences to disc")
     sentences_written = 0
     #with gzip.open(sys.argv[3], 'wt', encoding='utf8') as fOut:
-    with open(output, 'w', encoding='utf-8') as fOut:
+    outfile = outdir / f'aligned-segments-{source_file_code}-{target_file_code}'
+    with open(outfile, 'w', encoding='utf-8') as fOut:
 
         for i in np.argsort(-scores):
             src_ind, trg_ind = indices[i]
