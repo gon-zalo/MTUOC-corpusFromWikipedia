@@ -170,6 +170,7 @@ def create_corpora(args):
     from pathlib import Path
     import os
     import sys
+    print("\nRunning create command")
 
     lang1_name, lang1_code = get_language(args.lang1)
     lang2_name, lang2_code = get_language(args.lang2)
@@ -186,7 +187,7 @@ def create_corpora(args):
 
     dumpL1 = next(dumps_path.glob(f'{lang1_code}*'), None)
     if dumpL1:
-        print(f'Dump in {lang1_name} found: {str(dumpL1)}')
+        print(f'\nDump in {lang1_name} found: {str(dumpL1)}')
     else:
         print(f'{lang1_name} dump not found in directory.')
 
@@ -199,9 +200,12 @@ def create_corpora(args):
 
     outdir = args.outdir
     if not outdir:
-        outdir = f'corpora-{lang1_code}-{lang2_code}'
-    if outdir:
-        outdir = f'{outdir}-{lang1_code}-{lang2_code}'
+        outdir = f'outputs/corpora-{lang1_code}-{lang2_code}'
+    else:
+        outdir = f'outputs/{outdir}-{lang1_code}-{lang2_code}'
+
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
 
     categories = args.categories
     level = args.depth
@@ -213,7 +217,7 @@ def create_corpora(args):
     database = args.database
     if not database:
         database ='database/CCWikipedia-20251201.sqlite'
-    print('Database found!')
+    print(f'Database found: {database}')
     conn = sqlite3.connect(database)
     cur = conn.cursor() 
 
@@ -234,18 +238,18 @@ def create_corpora(args):
         categoriesAUX=[]
         level-=1
            
-    print("TOTAL CATEGORIES",len(categories_list))
+    print("\nTotal categories:",len(categories_list))
     
     contlang=0
     restrictedIdentsKeys=[]
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
 
     for lang in langs:
+        lang_name, lang_code = get_language(lang)
+
         contlang+=1
         idents={}
         
-        articlelist="articlelist-"+lang+".txt"
+        articlelist="articlelist-"+lang_code+".txt"
         articlelistpath = os.path.join(outdir, articlelist)
         alf=open(articlelistpath,"w",encoding="utf-8")
         
@@ -270,9 +274,9 @@ def create_corpora(args):
         
         if contlang==1:
             restrictedIdentsKeys=[]
-        if not lang=="en":
+        if not lang_code=="en":
             for ident in identskeys:
-                cur.execute('SELECT title from langlinks WHERE ident=? and lang=?', (ident,lang))
+                cur.execute('SELECT title from langlinks WHERE ident=? and lang=?', (ident,lang_code))
                 data=cur.fetchone()
                 if not data==None:
                     if contlang==1: restrictedIdentsKeys.append(ident)
@@ -286,15 +290,18 @@ def create_corpora(args):
                     if contlang==1: restrictedIdentsKeys.append(ident)
                     todownload.append(data[0])
                     alf.write(data[0]+"\n")
-        print("TOTAL PAGES",lang,len(todownload)) # this takes into account images (File:...), so its not accurate
+        print(f"Total number of pages in {lang_name}: {len(todownload)}") # this takes into account images (File:...), so its not accurate
         # write here code thats inside create_corpora to reflect the true number of articles
         alf.close() 
     
-    print("Creating corpora from dumps")
+    print("\nCreating corpora from dumps!")
     contlang=0
     for lang in langs:
+
+        lang_name, lang_code = get_language(lang)
+
         contlang+=1
-        titlesfile="articlelist-"+lang+".txt"
+        titlesfile="articlelist-"+lang_code+".txt"
         titlesfilepath = os.path.join(outdir, titlesfile)
         usertitles=[]
         entrada=open(titlesfilepath,"r",encoding="utf-8")
@@ -308,12 +315,13 @@ def create_corpora(args):
 
         usertitles_set = set(usertitles) # transforming list into a set for faster lookup
 
-        print(f"\nTitles of the pages to process in {lang.upper()}: {usertitles_set}\n") # for testing purposes
+        # print(f"\nTitles of the pages to process in {lang_name}: {usertitles_set}\n") # for testing purposes
+        print(f"\nProcessing pages in {lang_name}")
         print(f"Number of pages to process: {len(usertitles_set)}")
-        print("Accessing pages files...")
+        # print("Accessing pages files...")
 
         pages_processed = 0 # counter to keep track of the number of pages processed
-        pagesdir="pages-"+lang
+        pagesdir="pages-"+lang_code
         pagesdirpath = os.path.join(outdir, pagesdir) # change to use Path library!
         if not os.path.exists(pagesdirpath):
             os.makedirs(pagesdirpath) 
@@ -321,19 +329,18 @@ def create_corpora(args):
         if contlang==1: dump_path=dumpL1           
         if contlang==2: dump_path=dumpL2
         
-        print(f"Opening bz2 file for language: {lang.upper()}")
         with bz2.open(dump_path, 'rb') as f:
             # Parse the dump file
-            print("Parsing dump file...")
+            # print("Parsing dump file...")
             dump = mwxml.Dump.from_file(f)
 
             # Iterate over each page in the dump
-            print("\nIterating over each page in the dump file...")
+            # print("\nIterating over each page in the dump file...")
             
 
             for page in dump:
                 if pages_processed == len(usertitles_set): # added so that the parsing stops once all the necessary pages have been processed which saves time and fixes some pages being processed more than once
-                    print(f"\nAll pages in {lang.upper()} processed!")
+                    print(f"\nAll pages in {lang_name} processed!")
                     print("----------------------\n")
                     break
 
@@ -345,27 +352,27 @@ def create_corpora(args):
                                 # Extract categories from the wikitext
                                 #categories = extract_categories_from_wikitext(revision.text, category_namespace)
                                 
-                                print("Extracting text...")
+                                # print("Extracting text...")
                                 text = extract_text_from_wikitext(revision.text)
                                                                 
                                 filename=page.title.replace(" ","_")+".txt"
                                 full_path = os.path.join(pagesdirpath, filename)
                                 try:
                                     sortida=open(full_path,"w",encoding="utf-8")
-                                    print("Writing text to file...")
+                                    # print("Writing text to file...")
                                     sortida.write(page.title+"\n")
                                     linies=text.split("\n")
                                     for linia in linies:
                                         linia=linia.strip()
                                         
-                                        if not linia.startswith(category_namespaces[lang]) and not linia.startswith("|") and not linia.startswith("<") and not linia.startswith("!") and not linia.startswith("{")and len(linia)>0:
+                                        if not linia.startswith(category_namespaces[lang_code]) and not linia.startswith("|") and not linia.startswith("<") and not linia.startswith("!") and not linia.startswith("{")and len(linia)>0:
                                             sortida.write(linia+"\n")
                                     sortida.close()
             
 
                                 except:
                                     print("ERROR:",sys.exc_info())
-                            print("Page processed!")
+                            # print("Page processed!")
                             pages_processed += 1
                             print(f"Processed {pages_processed} out of {len(usertitles_set)}")
 
