@@ -1,5 +1,4 @@
 faiss
-re
 lxml
 mwxml
 mwparserfromhell
