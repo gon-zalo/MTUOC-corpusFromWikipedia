@@ -137,7 +137,7 @@ def segment_corpus(args):
     rules = parse(srxfile)
     languages = list(rules.keys())
     
-    indir=args.indir
+    indir = args.indir # should be the corpora folder inside outputs
     indir = Path(indir)
 
     paramark=args.paramark
