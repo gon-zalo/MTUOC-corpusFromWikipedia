@@ -1,5 +1,5 @@
 # pipeline function
-from utils.get_language import get_language
+from ..utils.get_language import get_language
 from .create import create_corpora
 from .segment import segment_corpus
 from .align import align_corpora
