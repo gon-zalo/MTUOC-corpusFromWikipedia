@@ -29,7 +29,7 @@ def cli():
     create_parser.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalents to L1 pages.', required=False)
     create_parser.add_argument('--database', action="store", dest="database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite',required=False)
     create_parser.add_argument('--dumps', help='Wikipedia dumps path. Default: dumps/', required=False)   
-    create_parser.add_argument('--outdir', help='Name of the output directory. Default: corpora-lang1-lang2/.',required=False)
+    create_parser.add_argument('--outdir', help='Name of the output directory. Default: corpora-lang1-lang2/. Language codes will be added automatically.',required=False)
     create_parser.set_defaults(func=create_corpora)
 
 # SEGMENT SUBPARSER
@@ -38,7 +38,7 @@ def cli():
     segment_parser.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", required=False)
     # segment_parser.add_argument("-l", "--srxlang", type=str, help="The language as stated in the SRX file, i.e. the name of the language.", required=True)
     segment_parser.add_argument("--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
-    segment_parser.add_argument("--outdir", type=str, help="The output directory in which to save the segmented files. If it doesn't exist, it will be created", required=True)
+    segment_parser.add_argument("--outdir", type=str, help="The output directory in which to save the segmented files. If it doesn't exist, it will be created", required=False)
     segment_parser.set_defaults(func=segment_corpus)
 
 # ALIGN SUBPARSER
