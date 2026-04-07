@@ -23,7 +23,7 @@ def cli():
 # CREATE SUBPARSER
     create_parser = subparsers.add_parser("create", help="Create parallel corpora from Wikipedia.", description="Create parallel corpora from Wikipedia dumps")
     create_parser.add_argument('lang1', help='Name or two letter ISO code of the source language.')
-    create_parser.add_argument('lang2', help='Name or two letter ISO code of the target language.')
+    create_parser.add_argument('lang2', help='Name or two letter ISO code of the target language. Keep empty for monolingual corpus.', nargs="?", default=None)
     create_parser.add_argument("categories", action="store", help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,).')
     create_parser.add_argument('depth', type=int, help='The category level depth.')
     create_parser.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalents to L1 pages.', required=False)
@@ -43,29 +43,29 @@ def cli():
 
 # ALIGN SUBPARSER
     align_parser = subparsers.add_parser("align", help="Perform bitext mining (alignment) between both corpora.", description="Mine parallel (translated) sentences from two lists of monolingual sentences.")
-    align_parser.add_argument("indir", help="Path to the folder with the unique segments files.")
+    align_parser.add_argument("indir", help="Path to the folder that contains unique segments files.")
     align_parser.add_argument("-dev", "--device", default="cpu", dest="device", help="Device used (GPU or CPU). Default is CPU.", required=False)
     # align_parser.add_argument("--file-by-file", help="Align segments file by file, as opposed to in bulk" , default=True, action="store_true", required=False) # not implemented
     align_parser.add_argument("--outdir", help="Output directory in which to save the aligned segments files.", required=False)
     align_parser.set_defaults(func=align_corpora)
 
 # RESCORE SUBPARSER
-    rescore_parser = subparsers.add_parser("rescore", help="Rescore the corpora using more computationally expensive models.", description="Score parallel corpora. The parallel corpus file should be a TSV file with a source column, target column and, optionally, a score column. It creates a text file that should be used with the select command to filter the segments.")
-    rescore_parser.add_argument("-i","--input", type=str, help="Path to the input file", required=True)
-    rescore_parser.add_argument("-o","--output", type=str, help="Path to the output file", required=True)
-    rescore_parser.add_argument("--SEmodel",type=str, help="Sentence Transformers embeddings model. Default model: LaBSE", required=False, default="LaBSE")
-    rescore_parser.add_argument("--LDmodel",type=str, help="The fastText language detection model. Default model: lid.176.bin", required=False, default="lid.176.bin")
+    rescore_parser = subparsers.add_parser("rescore", help="Rescore the corpora using more computationally expensive models.", description="Rescore previously aligned corpora.") # The parallel corpus file should be a TSV file with a source column, target column and, optionally, a score column. It creates a text file that should be used with the select command to filter the segments.
+    rescore_parser.add_argument("indir", help="Path to the folder that contains an aligned segments file.")
+    rescore_parser.add_argument("--SEmodel", help="Sentence Transformers embeddings model. Default model: LaBSE", required=False, default="LaBSE")
+    rescore_parser.add_argument("--LDmodel", help="The fastText language detection model. Default model: lid.176.bin", required=False, default="lid.176.bin")
+    rescore_parser.add_argument("--outdir", help="Output directory in which to save the rescored segments file.")   
     rescore_parser.set_defaults(func=rescore_corpus)
 
 # SELECT SUBPARSER
     select_parser = subparsers.add_parser("select", help="Filter the rescored parallel segments", description="Select parallel segments from a rescored text file created with rescore")
-    select_parser.add_argument("-i","--input", type=str, help="Path to the input file.  This file is meant to be the resulting one from the rescore function", required=True)
-    select_parser.add_argument("-o","--output", type=str, help="Path to the output", required=True)
-    select_parser.add_argument("--sl", help="The source language two letter code (e.g.: en, es, ca)", required=True)
+    select_parser.add_argument("indir", help="Path to the folder that contains a rescored segments file.  This file is meant to be the resulting one from the rescore function")
+    # select_parser.add_argument("--sl", help="The source language two letter code (e.g.: en, es, ca)", required=True)
     select_parser.add_argument("--sldc", type=float, help="The minimum source language detection confidence. Default value is 0.75", required=False, default=0.75)
-    select_parser.add_argument("--tl", help="The target language two letter code.", required=True)
+    # select_parser.add_argument("--tl", help="The target language two letter code.", required=True)
     select_parser.add_argument("--tldc", type=float, help="The minimum target language detection confidence. Default value is 0.75", required=False, default=0.75)
     select_parser.add_argument("--minSBERT", type=float, help="The minimum value for SBERT cosine similarity score to select a segment pair. Default value is 0.75", required=False, default=0.75)
+    select_parser.add_argument("--outdir", type=str, help="Output directory in which to save the selected segments file.")
     select_parser.set_defaults(func=select_corpus)
 
 # PIPELINE SUBPARSER WIP
@@ -79,9 +79,8 @@ def cli():
         5. Filter the rescored parallel segments. ''')
     
     pipeline_parser.add_argument('lang1', help='Name or two letter ISO code of the source language.')
-    pipeline_parser.add_argument('lang2', help='Name or two letter ISO code of the target language.')
+    pipeline_parser.add_argument('lang2', help='Name or two letter ISO code of the target language. Keep empty for monolingual corpus.', nargs="?", default=None)
     pipeline_parser.add_argument("--outdir", help="Name of the output directory, default is: corpora. Language codes will be added after it, i.e.: corpora-lang1-lang2/", required=False)
-    # pipeline_parser.add_argument('-mono', '--monolingual', help='Create and segment a monolingual corpus.')
     
     # CREATE OPTIONS
     create_group = pipeline_parser.add_argument_group("Create options")
