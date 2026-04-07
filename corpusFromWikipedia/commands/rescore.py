@@ -48,14 +48,33 @@ def process(sources, targets, scores, sortida, SEmodel, LDmodel):
             print(f"ERROR processing line {i}: {e}")
 
 def rescore_corpus(args):
-    print("Rescoring corpus...")
+    print("Running rescore command")
     import fasttext
     from sentence_transformers import SentenceTransformer
     import urllib
     from pathlib import Path
 
-    input_file = args.input
-    output_file = args.output
+    indir = args.indir
+    outdir = args.outdir
+
+    indir = Path(indir)
+
+    if not outdir:
+        outdir = indir
+    outdir = Path(outdir)
+
+    # looking for aligned-segments file
+    file_codes = ''
+    print("")
+    for file in indir.iterdir():
+        if file.is_file() and file.name.startswith("aligned-segments"):
+            print(f"Aligned segments file {file.name} found")
+            name = Path(file.name)
+            file_codes = name.stem[-5:] # this should get both codes
+            input_file = file
+    print("")
+    output_file = outdir / f'rescored-segments-{file_codes}.txt'
+
     SEmodel = args.SEmodel
     LDmodel = args.LDmodel
     maxlines = 10000
@@ -115,3 +134,4 @@ def rescore_corpus(args):
             targets=[]
             scores=[]
     process(sources,targets,scores,sortida, SEmodel, LDmodel)
+    print('Segments rescored')

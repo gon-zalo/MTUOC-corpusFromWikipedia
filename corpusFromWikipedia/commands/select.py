@@ -1,10 +1,29 @@
 # select functions
 def select_corpus(args):
-    print("Selecting segments from file...")
-    input_file = args.input
-    output_file = args.output
-    sl = args.sl
-    tl = args.tl
+    from pathlib import Path
+    print("Running select command")
+
+    indir = args.indir
+    outdir = args.outdir
+
+    indir = Path(indir)
+
+    if not outdir:
+        outdir = indir
+    outdir = Path(outdir)
+
+    file_codes = ''
+    print("")
+    for file in indir.iterdir():
+        if file.is_file() and file.name.startswith("rescored-segments"):
+            print(f"Rescored segments file {file.name} found")
+            name = Path(file.name)
+            file_codes = name.stem[-5:] # this should get both codes
+            input_file = file
+    print("")
+    output_file = outdir / f'selected-segments-{file_codes}.txt'
+
+
     sldc = args.sldc
     tldc = args.tldc
     minSBERT = args.minSBERT
@@ -14,6 +33,8 @@ def select_corpus(args):
     else:
         minSBERT = float(minSBERT)
 
+    sl = file_codes[0:2]
+    tl = file_codes[-2:]
 
     sortida=open(output_file,"w",encoding="utf-8")
     entrada=open(input_file,"r",encoding="utf-8")
@@ -39,3 +60,4 @@ def select_corpus(args):
             cadena=slsegment+"\t"+tlsegment
             #print(cadena)
             sortida.write(cadena+"\n")
+    print('Selected segments saved')

@@ -87,14 +87,14 @@ def align_corpora(args):
 
     unique_segments_files = []
     unique_segments_files_codes = []
-    print("\n")
+    print("")
     for file in indir.iterdir():
         if file.is_file() and file.name.startswith("unique-segments"):
             print(f"Unique segments file {file.name} found")
             unique_segments_files.append(file)
             name = Path(file.name)
             unique_segments_files_codes.append(name.stem[-2:])
-    print("\n")
+    print("")
 
     source_file, target_file = unique_segments_files
     source_file_code, target_file_code = unique_segments_files_codes
@@ -228,7 +228,7 @@ def align_corpora(args):
     print("Write sentences to disc")
     sentences_written = 0
     #with gzip.open(sys.argv[3], 'wt', encoding='utf8') as fOut:
-    outfile = outdir / f'aligned-segments-{source_file_code}-{target_file_code}'
+    outfile = outdir / f'aligned-segments-{source_file_code}-{target_file_code}.txt'
     with open(outfile, 'w', encoding='utf-8') as fOut:
 
         for i in np.argsort(-scores):

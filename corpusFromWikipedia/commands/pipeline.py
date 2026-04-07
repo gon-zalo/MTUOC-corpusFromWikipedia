@@ -75,8 +75,9 @@ def pipeline(args):
     align_args = argparse.Namespace(
         device=device, 
         indir=corpora_folder,
-        output=corpora_folder)
+        outdir=corpora_folder)
     align_corpora(align_args)
+
 
     # rescore args
     SEmodel = args.SEmodel
@@ -84,10 +85,10 @@ def pipeline(args):
 
     # rescore segments
     rescore_args = argparse.Namespace(
-        input= root / f'aligned_segments-{lang1_code}-{lang2_code}', 
-        output= root / f'rescored_segments-{lang1_code}-{lang2_code}', 
+        indir= corpora_folder, 
         SEmodel=SEmodel, 
-        LDmodel=LDmodel)
+        LDmodel=LDmodel,
+        outdir= corpora_folder)
     rescore_corpus(rescore_args)
 
 
@@ -98,10 +99,8 @@ def pipeline(args):
 
     # select segments
     select_args = argparse.Namespace(
-        input=f'rescored_segments-{lang1_code}-{lang2_code}', 
-        output=f'selected_segments-{lang1_code}-{lang2_code}', 
-        sl=lang1_code, 
-        tl=lang2_code, 
+        indir=corpora_folder, 
+        outdir=corpora_folder,
         sldc=sldc, 
         tldc=tldc, 
         minSBERT=minSBERT)
