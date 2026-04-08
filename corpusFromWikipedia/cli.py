@@ -8,7 +8,7 @@ from .commands.select import select_corpus
 from .commands.pipeline import pipeline
 
 import argparse
-from pathlib import Path
+import sys
 
 # cli function
 def cli():          
@@ -23,9 +23,9 @@ def cli():
 # CREATE SUBPARSER
     create_parser = subparsers.add_parser("create", help="Create parallel corpora from Wikipedia.", description="Create parallel corpora from Wikipedia dumps")
     create_parser.add_argument('lang1', help='Name or two letter ISO code of the source language.')
-    create_parser.add_argument('lang2', help='Name or two letter ISO code of the target language. Keep empty for monolingual corpus.', nargs="?", default=None)
-    create_parser.add_argument("categories", action="store", help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,).')
-    create_parser.add_argument('depth', type=int, help='The category level depth.')
+    create_parser.add_argument('lang2', help='Name or two letter ISO code of the target language. Keep empty to create a monolingual corpus.', nargs="?", default=None)
+    create_parser.add_argument("categories", action="store", nargs="?", help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,).')
+    create_parser.add_argument('--depth', type=int, help='The category level depth.', required=False)
     create_parser.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalents to L1 pages.', required=False)
     create_parser.add_argument('--database', action="store", dest="database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite',required=False)
     create_parser.add_argument('--dumps', help='Wikipedia dumps path. Default: dumps/', required=False)   

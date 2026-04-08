@@ -163,6 +163,17 @@ def extract_text_from_wikitext(wikitext):
     wikicode = mwparserfromhell.parse(wikitext)
     return wikicode.strip_code()
     
+def find_dumps(dumps_path, lang_code, lang_name):
+
+    dump = next(dumps_path.glob(f'{lang_code}*'), None)
+    if dump:
+        print(f'\nDump in {lang_name} found: {str(dump)}')
+    else:
+        print(f'{lang_name} dump not found in directory.')
+
+    return dump
+
+
 def create_corpora(args):
     import sqlite3
     import mwxml
@@ -171,50 +182,81 @@ def create_corpora(args):
     import os
     import sys
     print("\nRunning create command")
-
-    lang1_name, lang1_code = get_language(args.lang1)
-    lang2_name, lang2_code = get_language(args.lang2)
-
-    langs = [lang1_code]
-
-    if lang2_code is not None:
-        langs.append(lang2_code)
+    
+    lang1 = args.lang1
+    lang2 = args.lang2
 
     dumps = args.dumps
     if not dumps:
         dumps = 'dumps/'
     dumps_path = Path(dumps)
 
-    dumpL1 = next(dumps_path.glob(f'{lang1_code}*'), None)
-    if dumpL1:
-        print(f'\nDump in {lang1_name} found: {str(dumpL1)}')
-    else:
-        print(f'{lang1_name} dump not found in directory.')
-
-    dumpL2 = next(dumps_path.glob(f'{lang2_code}*'), None)
-    if dumpL2:
-        print(f'Dump in {lang2_name} found: {str(dumpL2)}')
-    else:
-        print(f'{lang2_name} dump not found in directory.')
-
-
     outdir = args.outdir
-    if not outdir:
-        outdir = f'outputs/corpora-{lang1_code}-{lang2_code}'
-    else:
-        outdir = f'outputs/{outdir}-{lang1_code}-{lang2_code}'
+
+    if lang2: # if bilingual
+        print("Creating bilingual corpora")
+        lang1_name, lang1_code = get_language(lang1)
+        lang2_name, lang2_code = get_language(lang2)
+        langs = [lang1_code, lang2_code]
+
+        dumpL1 = find_dumps(dumps_path, lang1_code, lang1_name)
+        dumpL2 = find_dumps(dumps_path, lang2_code, lang2_name)
+
+        if not outdir:
+            outdir = f'outputs/corpora-{lang1_code}-{lang2_code}'
+        else:
+            outdir = f'outputs/{outdir}-{lang1_code}-{lang2_code}'
+
+    else: # if monolingual
+        print("Creating monolingual corpora")
+        lang1_name, lang1_code = get_language(lang1)
+        langs = [lang1_code]
+
+        dumpL1 = find_dumps(dumps_path, lang1_code, lang1_name)
+
+        if not outdir:
+            outdir = f'outputs/corpus-{lang1_code}'
+        else:
+            outdir = f'outputs/{outdir}-{lang1_code}'
+
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     print(f"Creating folder {outdir}")
     
     categories = args.categories
-    level = args.depth
-    restrict = args.restrict
+    selectcategories = False
+    if categories: # if you want to fetch specific categories
+        print("Fetching categories")
+        level = args.depth
+        if categories and not level:
+            print("Error: '--depth' is required when categories is provided")
+            sys.exit(1)
 
-    categories_list = []
-    categoriesTEMP = []
+        categories_list = []
 
+        categoriesTEMP = []
+
+        for cat in categories.split(","):
+            cat = cat.strip()
+            categories_list.append(cat)
+            categoriesTEMP.append(cat)
+        categoriesAUX=[]
+        while level>0:
+            while(len(categoriesTEMP))>0:
+                categories=categoriesTEMP.pop(0)
+                cur.execute('SELECT categoryREL from categoryrelations WHERE category=?', (categories,))
+                data=cur.fetchall()
+                for d in data:
+                    categories_list.append(d[0])
+                    categoriesAUX.append(d[0])
+            categoriesTEMP.extend(categoriesAUX)
+            categoriesAUX=[]
+            level-=1
+        selectcategories=True
+        print("\nTotal categories:",len(categories_list))
+
+    print("Processing the whole dump")
     database = args.database
     if not database:
         database ='database/CCWikipedia-20251201.sqlite'
@@ -222,24 +264,7 @@ def create_corpora(args):
     conn = sqlite3.connect(database)
     cur = conn.cursor() 
 
-    for cat in categories.split(","):
-        cat = cat.strip()
-        categories_list.append(cat)
-        categoriesTEMP.append(cat)
-    categoriesAUX=[]
-    while level>0:
-        while(len(categoriesTEMP))>0:
-            categories=categoriesTEMP.pop(0)
-            cur.execute('SELECT categoryREL from categoryrelations WHERE category=?', (categories,))
-            data=cur.fetchall()
-            for d in data:
-                categories_list.append(d[0])
-                categoriesAUX.append(d[0])
-        categoriesTEMP.extend(categoriesAUX)
-        categoriesAUX=[]
-        level-=1
-           
-    print("\nTotal categories:",len(categories_list))
+    restrict = args.restrict
     
     contlang=0
     restrictedIdentsKeys=[]
@@ -254,18 +279,24 @@ def create_corpora(args):
         articlelistpath = os.path.join(outdir, articlelist)
         alf=open(articlelistpath,"w",encoding="utf-8")
         
-        selectcategories=True
-        
         if contlang==2 and restrict:
             selectcategories=False
-        
+
         if selectcategories:
+            print("Categories found. The selected categories will be processed.")
             for category in categories_list:
                 cur.execute('SELECT ident from categories WHERE category=?', (category,))
                 data=cur.fetchall()
                 for d in data:
                     idents[d[0]]=1
                 
+        else:
+            print("No categories selected. The whole dump will be processed.")
+            cur.execute('SELECT ident FROM titles')
+            data = cur.fetchall()
+            for d in data:
+                idents[d[0]] = 1
+
         if restrict and contlang==2:
             identskeys=restrictedIdentsKeys
         else:
@@ -275,6 +306,7 @@ def create_corpora(args):
         
         if contlang==1:
             restrictedIdentsKeys=[]
+
         if not lang_code=="en":
             for ident in identskeys:
                 cur.execute('SELECT title from langlinks WHERE ident=? and lang=?', (ident,lang_code))
@@ -296,6 +328,7 @@ def create_corpora(args):
         alf.close() 
     
     print("\nCreating corpora from dumps!")
+    
     contlang=0
     for lang in langs:
 
