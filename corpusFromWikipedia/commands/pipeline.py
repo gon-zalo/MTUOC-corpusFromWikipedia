@@ -18,13 +18,13 @@ def pipeline(args):
     lang1_name, lang1_code = get_language(lang1)
     lang2_name, lang2_code = get_language(lang2)
 
-    outdir = outdir or 'corpora'
+    outdir = outdir or 'corpus'
 
-    outputs_folder = Path('outputs')
+    outputs_folder = Path('../corpora')
     outdir = Path(outdir)
     corpora_folder = outputs_folder / f'{outdir}-{lang1_code}-{lang2_code}'
 
-    print(f"\nCreating parallel corpora in {lang1_name} and {lang2_name}")
+    print(f"\nCreating parallel corpus in {lang1_name} and {lang2_name}")
 
     # create args
     database = args.database

@@ -192,7 +192,7 @@ def create_corpora(args):
     outdir = args.outdir
 
     if lang2: # if bilingual
-        print("Creating bilingual corpora")
+        print("Creating bilingual corpus")
         lang1_name, lang1_code = get_language(lang1)
         lang2_name, lang2_code = get_language(lang2)
         langs = [lang1_code, lang2_code]
@@ -201,21 +201,21 @@ def create_corpora(args):
         dumpL2 = find_dumps(dumps_path, lang2_code, lang2_name)
 
         if not outdir:
-            outdir = f'outputs/corpora-{lang1_code}-{lang2_code}'
+            outdir = f'../corpora/corpus-{lang1_code}-{lang2_code}'
         else:
-            outdir = f'outputs/{outdir}-{lang1_code}-{lang2_code}'
+            outdir = f'../corpora/{outdir}-{lang1_code}-{lang2_code}'
 
     else: # if monolingual
-        print("Creating monolingual corpora")
+        print("Creating monolingual corpus")
         lang1_name, lang1_code = get_language(lang1)
         langs = [lang1_code]
 
         dumpL1 = find_dumps(dumps_path, lang1_code, lang1_name)
 
         if not outdir:
-            outdir = f'outputs/corpus-{lang1_code}'
+            outdir = f'../corpora/corpus-{lang1_code}'
         else:
-            outdir = f'outputs/{outdir}-{lang1_code}'
+            outdir = f'../corpora/{outdir}-{lang1_code}'
 
 
     outdir = Path(outdir)
