@@ -12,7 +12,7 @@ def score_candidates(x, y, candidate_inds, fwd_mean, bwd_mean, margin):
             scores[i, j] = score(x[i], y[k], fwd_mean[i], bwd_mean[k], margin)
     return scores
 
-def kNN(x, y, k, use_ann_search=False, ann_num_clusters=32768, ann_num_cluster_probe=3, device="cpu"):
+def kNN(device, x, y, k, use_ann_search=False, ann_num_clusters=32768, ann_num_cluster_probe=3):
     import faiss
     import time
     start_time = time.time()
@@ -42,7 +42,7 @@ def kNN(x, y, k, use_ann_search=False, ann_num_clusters=32768, ann_num_cluster_p
         #sim, ind = idx.search(x, k)
         gpu_index.add(y)
         sim, ind = gpu_index.search(x, k)
-    else:
+    elif device == "cpu":
         # MODIFICACIÓ: Forcem l'ús de la CPU per a la cerca exacta
         # Això evita l'error 'cublas failed' per falta de memòria VRAM
         print("Perform exact search (CPU Mode)")
@@ -206,10 +206,10 @@ def align_corpora(args):
     y = y / np.linalg.norm(y, axis=1, keepdims=True)
 
     # Perform kNN in both directions
-    x2y_sim, x2y_ind = kNN(x, y, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe, device=device)
+    x2y_sim, x2y_ind = kNN(device, x, y, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe)
     x2y_mean = x2y_sim.mean(axis=1)
 
-    y2x_sim, y2x_ind = kNN(y, x, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe, device=device)
+    y2x_sim, y2x_ind = kNN(device, y, x, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe)
     y2x_mean = y2x_sim.mean(axis=1)
 
     # Compute forward and backward scores

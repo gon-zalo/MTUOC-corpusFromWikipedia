@@ -44,7 +44,7 @@ def cli():
 # ALIGN SUBPARSER
     align_parser = subparsers.add_parser("align", help="Perform bitext mining (alignment) between both corpora.", description="Mine parallel (translated) sentences from two lists of monolingual sentences.")
     align_parser.add_argument("indir", help="Path to the folder that contains unique segments files.")
-    align_parser.add_argument("-dev", "--device", default="cpu", dest="device", help="Device used (GPU or CPU). Default is CPU.", required=False)
+    align_parser.add_argument("-dev", "--device", choices=["gpu", "cpu"], default="gpu", dest="device", help="Device used (GPU or CPU). Default: GPU.", required=False)
     # align_parser.add_argument("--file-by-file", help="Align segments file by file, as opposed to in bulk" , default=True, action="store_true", required=False) # not implemented
     align_parser.add_argument("--outdir", help="Output directory in which to save the aligned segments files.", required=False)
     align_parser.set_defaults(func=align_corpora)
