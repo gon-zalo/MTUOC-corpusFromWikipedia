@@ -151,7 +151,9 @@ def segment_corpus(args):
         if folder.is_dir() and folder.name.startswith("pages"):
             print(f"\nFolder {folder.name} found")
 
-            ending = folder.name[-2:]
+            ending = folder.name.split("-") # splitting folder name to get the language code
+            ending = ending[-1]
+
             srxlang_name, srxlang_code = get_language(ending)
             if not srxlang_name in languages:
                 print("Language ",srxlang_name," not available in ", srxfile)

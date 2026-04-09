@@ -17,8 +17,9 @@ def select_corpus(args):
     for file in indir.iterdir():
         if file.is_file() and file.name.startswith("rescored-segments"):
             print(f"Rescored segments file {file.name} found")
-            name = Path(file.name)
-            file_codes = name.stem[-5:] # this should get both codes
+            stem = file.stem
+            stem = stem.split("-")
+            file_codes = f'{stem[-2]}-{stem[-1]}' # getting both language codes from the file name
             input_file = file
     print("")
     output_file = outdir / f'selected-segments-{file_codes}.txt'

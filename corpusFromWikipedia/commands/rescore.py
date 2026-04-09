@@ -69,8 +69,9 @@ def rescore_corpus(args):
     for file in indir.iterdir():
         if file.is_file() and file.name.startswith("aligned-segments"):
             print(f"Aligned segments file {file.name} found")
-            name = Path(file.name)
-            file_codes = name.stem[-5:] # this should get both codes
+            stem = file.stem
+            stem = stem.split("-")
+            file_codes = f'{stem[-2]}-{stem[-1]}' # getting both language codes from the file name
             input_file = file
     print("")
     output_file = outdir / f'rescored-segments-{file_codes}.txt'
@@ -135,3 +136,10 @@ def rescore_corpus(args):
             scores=[]
     process(sources,targets,scores,sortida, SEmodel, LDmodel)
     print('Segments rescored')
+
+    # corpora env
+    # fasttext                   0.9.2            py310hc563356_9             conda-forge
+    # numpy                      2.2.6            py310hefbff90_0             conda-forge
+
+    # openeu env
+    # fasttext                     0.9.3            pypi_0                pypi

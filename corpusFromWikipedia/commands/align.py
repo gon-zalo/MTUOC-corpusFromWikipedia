@@ -76,7 +76,6 @@ def align_corpora(args):
     from sklearn.decomposition import PCA
     import torch
     from pathlib import Path
-    import lzma
     import numpy as np
 
     device = args.device
@@ -92,8 +91,8 @@ def align_corpora(args):
         if file.is_file() and file.name.startswith("unique-segments"):
             print(f"Unique segments file {file.name} found")
             unique_segments_files.append(file)
-            name = Path(file.name)
-            unique_segments_files_codes.append(name.stem[-2:])
+            language_code = file.stem.split("-")
+            unique_segments_files_codes.append(language_code[-1])
     print("")
 
     source_file, target_file = unique_segments_files
