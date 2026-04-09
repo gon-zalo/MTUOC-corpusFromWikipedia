@@ -16,3 +16,4 @@ dependencies:
     - lxml
     - pycountry
     - sentence-transformers
+    - mwxml
