@@ -27,15 +27,15 @@ def cli():
     create_parser.add_argument("categories", action="store", nargs="?", help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,).')
     create_parser.add_argument('--depth', type=int, help='The category level depth.', required=False)
     create_parser.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalents to L1 pages.', required=False)
-    create_parser.add_argument('--database', action="store", dest="database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite',required=False)
-    create_parser.add_argument('--dumps', help='Wikipedia dumps path. Default: dumps/', required=False)   
+    create_parser.add_argument('--database', action="store", dest="database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite', default= 'database/CCWikipedia-20251201.sqlite', required=False)
+    create_parser.add_argument('--dumps', help='Wikipedia dumps path. Default: dumps/', default="dumps", required=False)   
     create_parser.add_argument('--outdir', help='Name of the output directory. Default: corpora-lang1-lang2/. Language codes will be added automatically.',required=False)
     create_parser.set_defaults(func=create_corpora)
 
 # SEGMENT SUBPARSER
     segment_parser = subparsers.add_parser("segment", help="Segment the extracted texts.", description="Segment the corpora. Can be used on its own to segment all the files in one directory.")
-    segment_parser.add_argument("indir", help="Folder where the corpus to segment is stored, i.e., the 'pages-lang' folder. The folder must have the two letter ISO code at the end.")
-    segment_parser.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", required=False)
+    segment_parser.add_argument("indir", help="Folder where the corpus to segment is stored, i.e., the 'pages-lang' folder. The folder must have the language ISO code at the end.")
+    segment_parser.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", default='segment.srx', required=False)
     # segment_parser.add_argument("-l", "--srxlang", type=str, help="The language as stated in the SRX file, i.e. the name of the language.", required=True)
     segment_parser.add_argument("--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
     segment_parser.add_argument("--outdir", type=str, help="Output directory in which to save the segmented files. If it doesn't exist, it will be created", required=False)
@@ -92,12 +92,12 @@ def cli():
 
     # SEGMENT OPTIONS
     segment_group = pipeline_parser.add_argument_group("Segment options")
-    segment_group.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", required=False)
+    segment_group.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", default='segment.srx', required=False)
     segment_group.add_argument("-p", "--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
 
     # ALIGN OPTIONS
     align_group = pipeline_parser.add_argument_group("Align options")
-    align_group.add_argument("-dev", "--device", default="cpu", help="The device used to align segments (GPU or CPU). Default: CPU.", required=False)
+    align_group.add_argument("-dev", "--device", choices=['gpu', 'cpu'], default="gpu", help="The device used to align segments (GPU or CPU). Default: GPU.", required=False)
 
     # RESCORE OPTIONS
     rescore_group = pipeline_parser.add_argument_group("Rescore options")

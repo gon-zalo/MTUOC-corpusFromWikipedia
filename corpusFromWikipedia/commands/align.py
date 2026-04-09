@@ -98,10 +98,7 @@ def align_corpora(args):
     source_file, target_file = unique_segments_files
     source_file_code, target_file_code = unique_segments_files_codes
     
-    outdir = args.outdir
-
-    if not outdir:
-        outdir = indir
+    outdir = args.outdir or indir
 
     #Model we want to use for bitext mining. LaBSE achieves state-of-the-art performance
     model_name = 'LaBSE'

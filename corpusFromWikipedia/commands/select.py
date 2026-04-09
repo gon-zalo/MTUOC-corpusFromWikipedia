@@ -8,8 +8,7 @@ def select_corpus(args):
 
     indir = Path(indir)
 
-    if not outdir:
-        outdir = indir
+    outdir = outdir or indir
     outdir = Path(outdir)
 
     file_codes = ''

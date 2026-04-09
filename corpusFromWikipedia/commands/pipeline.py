@@ -18,10 +18,7 @@ def pipeline(args):
     lang1_name, lang1_code = get_language(lang1)
     lang2_name, lang2_code = get_language(lang2)
 
-    if not outdir:
-        outdir = f'corpora'
-    else:
-        outdir = f'{outdir}'
+    outdir = outdir or 'corpora'
 
     outputs_folder = Path('outputs')
     outdir = Path(outdir)
@@ -33,6 +30,7 @@ def pipeline(args):
     database = args.database
     if not database:
         database ='database/CCWikipedia-20251201.sqlite'
+    
     dumps = args.dumps
     if not dumps:
         dumps = 'dumps/'
@@ -100,8 +98,8 @@ def pipeline(args):
     # select segments
     select_args = argparse.Namespace(
         indir=corpora_folder, 
-        outdir=corpora_folder,
         sldc=sldc, 
         tldc=tldc, 
-        minSBERT=minSBERT)
+        minSBERT=minSBERT,
+        outdir=corpora_folder)
     select_corpus(select_args)

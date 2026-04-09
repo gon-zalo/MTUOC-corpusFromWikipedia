@@ -116,9 +116,9 @@ def detect_encoding(file_path):
     result = from_path(file_path).best()
     return result.encoding if result else 'utf-8'
 
-def sort_uniq_shuf(segments_folder, lang_code, indir):
+def sort_uniq_shuf(segments_folder, lang_code, outdir):
     import subprocess
-    cmd = f'cat {segments_folder}/* | sort | uniq | shuf > {indir}/unique-segments-{lang_code}.txt' 
+    cmd = f'cat {segments_folder}/* | sort | uniq | shuf > {outdir}/unique-segments-{lang_code}.txt' 
     subprocess.run(
         cmd,
         shell=True,
@@ -132,8 +132,6 @@ def segment_corpus(args):
 
     # accessing args
     srxfile=args.srxfile
-    if not srxfile:
-        srxfile = 'segment.srx'
     rules = parse(srxfile)
     languages = list(rules.keys())
     
@@ -142,9 +140,7 @@ def segment_corpus(args):
 
     paramark=args.paramark
 
-    outdir=args.outdir
-    if not outdir:
-        outdir = indir
+    outdir = args.outdir or indir
 
     for folder in indir.iterdir(): # look for 'pages' folders inside the input directory
 
@@ -179,4 +175,4 @@ def segment_corpus(args):
                                     sortida.write("<p>\n")
                                 sortida.write(segments + "\n")
 
-            sort_uniq_shuf(segments_folder, srxlang_code, indir)
+            sort_uniq_shuf(segments_folder, srxlang_code, outdir)

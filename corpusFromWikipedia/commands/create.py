@@ -186,9 +186,7 @@ def create_corpora(args):
     lang1 = args.lang1
     lang2 = args.lang2
 
-    dumps = args.dumps
-    if not dumps:
-        dumps = 'dumps/'
+    dumps = args.dumps or 'dumps'
     dumps_path = Path(dumps)
 
     outdir = args.outdir
@@ -258,8 +256,6 @@ def create_corpora(args):
 
     print("Processing the whole dump")
     database = args.database
-    if not database:
-        database ='database/CCWikipedia-20251201.sqlite'
     print(f'Database found: {database}')
     conn = sqlite3.connect(database)
     cur = conn.cursor() 
