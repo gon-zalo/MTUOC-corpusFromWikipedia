@@ -87,8 +87,8 @@ def cli():
     create_group.add_argument('categories', help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,).')
     create_group.add_argument('depth', type=int, help='The category level depth.')
     create_group.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalent L1 pages.')
-    create_group.add_argument("--database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite', required=False)
-    create_group.add_argument('--dumps', help='Wikipedia dumps path. Default: dumps/', required=False)    
+    create_group.add_argument("--database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite', default='database/CCWikipedia-20251201.sqlite', required=False)
+    create_group.add_argument('--dumps', help='Wikipedia dumps path. Default: dumps/', default='dumps',required=False)    
 
     # SEGMENT OPTIONS
     segment_group = pipeline_parser.add_argument_group("Segment options")
@@ -97,7 +97,7 @@ def cli():
 
     # ALIGN OPTIONS
     align_group = pipeline_parser.add_argument_group("Align options")
-    align_group.add_argument("-dev", "--device", choices=['gpu', 'cpu'], default="gpu", help="The device used to align segments (GPU or CPU). Default: GPU.", required=False)
+    align_group.add_argument("-dev", "--device", choices=['gpu', 'cpu'], default="gpu", help="The device used to align segments (GPU or CPU). Default: GPU.", required=False, dest='device')
 
     # RESCORE OPTIONS
     rescore_group = pipeline_parser.add_argument_group("Rescore options")

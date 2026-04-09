@@ -80,6 +80,10 @@ def align_corpora(args):
 
     device = args.device
     device = device.lower()
+
+    if device == 'gpu' and not torch.cuda.is_available():
+        print("GPU requested but not found. Using CPU.")
+        device = 'cpu'
     indir = args.indir
 
     indir = Path(indir)

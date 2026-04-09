@@ -28,12 +28,8 @@ def pipeline(args):
 
     # create args
     database = args.database
-    if not database:
-        database ='database/CCWikipedia-20251201.sqlite'
     
     dumps = args.dumps
-    if not dumps:
-        dumps = 'dumps/'
     categories = args.categories
     level = args.depth
     restrict = args.restrict
