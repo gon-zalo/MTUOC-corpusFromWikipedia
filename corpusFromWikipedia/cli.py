@@ -8,7 +8,6 @@ from .commands.select import select_corpus
 from .commands.pipeline import pipeline
 
 import argparse
-import sys
 
 # cli function
 def cli():          

@@ -164,12 +164,13 @@ def extract_text_from_wikitext(wikitext):
     return wikicode.strip_code()
     
 def find_dumps(dumps_path, lang_code, lang_name):
-
+    import sys
     dump = next(dumps_path.glob(f'{lang_code}*'), None)
     if dump:
         print(f'\nDump in {lang_name} found: {str(dump)}')
     else:
         print(f'{lang_name} dump not found in directory.')
+        sys.exit()
 
     return dump
 
@@ -223,6 +224,10 @@ def create_corpora(args):
     print(f"Creating folder {outdir}")
     
     categories = args.categories
+    database = args.database
+    print(f'Database found: {database}')
+    conn = sqlite3.connect(database)
+    cur = conn.cursor() 
     selectcategories = False
     if categories: # if you want to fetch specific categories
         print("Fetching categories")
@@ -254,14 +259,7 @@ def create_corpora(args):
         selectcategories=True
         print("\nTotal categories:",len(categories_list))
 
-    print("Processing the whole dump")
-    database = args.database
-    print(f'Database found: {database}')
-    conn = sqlite3.connect(database)
-    cur = conn.cursor() 
-
     restrict = args.restrict
-    
     contlang=0
     restrictedIdentsKeys=[]
 
