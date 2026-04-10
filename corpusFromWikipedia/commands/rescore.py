@@ -135,10 +135,3 @@ def rescore_corpus(args):
             scores=[]
     process(sources,targets,scores,sortida, SEmodel, LDmodel)
     print('Segments rescored')
-
-    # corpora env
-    # fasttext                   0.9.2            py310hc563356_9             conda-forge
-    # numpy                      2.2.6            py310hefbff90_0             conda-forge
-
-    # openeu env
-    # fasttext                     0.9.3            pypi_0                pypi
