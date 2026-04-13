@@ -56,7 +56,7 @@ def cli():
     segment_parser.set_defaults(func=segment_corpus)
 
 # ALIGN SUBPARSER
-    align_parser = subparsers.add_parser("align", help="Perform bitext mining (alignment) between both corpora.", description="Align parallel sentences from two lists of monolingual sentences. The input files should be text files of segmented text named: unique-segments and containing the language ISO code at the end, e.g.: 'unique-segments-en.txt. The output is an aligned segments text file.")
+    align_parser = subparsers.add_parser("align", help="Perform bitext mining and alignment between both corpora.", description="Bitext mine and align parallel sentences from two lists of monolingual sentences. The input files should be text files of segmented text named: unique-segments and containing the language ISO code at the end, e.g.: 'unique-segments-en.txt. The output is an aligned segments text file.")
     align_parser.add_argument("indir", help="Path to the folder that contains the unique segments files.")
     align_parser.add_argument("-dev", "--device", choices=["gpu", "cpu"], default="gpu", dest="device", help="Device used (GPU or CPU). Default: GPU.", required=False)
     # align_parser.add_argument("--file-by-file", help="Align segments file by file, as opposed to in bulk" , default=True, action="store_true", required=False) # not implemented
