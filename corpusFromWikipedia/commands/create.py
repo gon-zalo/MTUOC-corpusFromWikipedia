@@ -220,8 +220,12 @@ def create_corpora(args):
 
 
     outdir = Path(outdir)
-    outdir.mkdir(parents=True, exist_ok=True)
-    print(f"Creating folder {outdir}")
+    if outdir.exists():
+        print("Directory already exists, choose another name")
+        sys.exit()
+    else:
+        outdir.mkdir(parents=True)
+        print(f"Creating folder {outdir}")
     
     categories = args.categories
     database = args.database
@@ -375,7 +379,7 @@ def create_corpora(args):
                 else:
                     if not page.redirect:  # Skip redirect pages
                         if page.title in usertitles_set: # using set for faster lookup
-                            print(f"\nProcessing page: {page.title}")
+                            print(f"Processing page: {page.title}")
                             for revision in page:
                                 # Extract categories from the wikitext
                                 #categories = extract_categories_from_wikitext(revision.text, category_namespace)
