@@ -153,7 +153,14 @@ category_namespaces = {
     "sn": "Chikamu",
     "za": "分類",
     "zu": "Isigaba",
-    "ast": "Categoría"
+    "ast": "Categoría",
+    "fur": "Categorie",
+    "lij": "Categoria",
+    "la": "Categoria",
+    "lld": "Categoria",
+    "lmo": "Categoria",
+    "pms": "Categoria",
+    "rm": "Categoria"
 }
 from ..utils.get_language import get_language
 
@@ -404,6 +411,7 @@ def create_corpora(args):
 
                                 except:
                                     print("ERROR:",sys.exc_info())
+                                    print(f"Category namespace for {lang_name} is missing.")
                             # print("Page processed!")
                             pages_processed += 1
                             print(f"Processed {pages_processed} out of {len(usertitles_set)}")
