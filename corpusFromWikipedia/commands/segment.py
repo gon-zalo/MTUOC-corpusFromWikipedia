@@ -134,7 +134,8 @@ def segment_corpus(args):
     srxfile=args.srxfile
     rules = parse(srxfile)
     languages = list(rules.keys())
-    
+    force_language = args.force_language
+
     indir = args.indir # should be the corpora folder inside outputs
     indir = Path(indir)
 
@@ -150,15 +151,27 @@ def segment_corpus(args):
             ending = folder.name.split("-") # splitting folder name to get the language code
             ending = ending[-1]
 
-            srxlang_name, srxlang_code = get_language(ending)
-            if not srxlang_name in languages:
-                print("Language ",srxlang_name," not available in ", srxfile)
-                print("Available languages:",", ".join(languages))
-                sys.exit()
+            if not force_language:
+                srxlang_name, srxlang_code = get_language(ending)
+                if not srxlang_name in languages:
+                    print("Language ",srxlang_name," not available in ", srxfile)
+                    print("Available languages:",", ".join(languages))
+                    sys.exit()
+
+            else:
+                print(f"Overriding default segmenter configuration.")
+                srxlang_name = force_language.capitalize()
+                print(f"{srxlang_name} chosen")
 
             print(f"Segmenting files in {srxlang_name}")
-            segments_folder = indir / f'segments-{srxlang_code}'
-            segments_folder.mkdir(parents=True, exist_ok=True)
+
+            if not force_language:
+                segments_folder = indir / f'segments-{srxlang_code}'
+                segments_folder.mkdir(parents=True, exist_ok=True)
+            else:
+                segments_folder = indir / f'segments-force-{srxlang_name.lower()}'
+                segments_folder.mkdir(parents=True, exist_ok=True)
+
 
             for text_file in folder.rglob("*.txt"): # accessing all txt files
                 encoding = detect_encoding(text_file)
@@ -175,4 +188,9 @@ def segment_corpus(args):
                                     sortida.write("<p>\n")
                                 sortida.write(segments + "\n")
 
-            sort_uniq_shuf(segments_folder, srxlang_code, outdir)
+            if not force_language:
+                sort_uniq_shuf(segments_folder, srxlang_code, outdir)
+
+            else:
+                srxlang_name = 'force-' + srxlang_name
+                sort_uniq_shuf(segments_folder, srxlang_name, outdir)

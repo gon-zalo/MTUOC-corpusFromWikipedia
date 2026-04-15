@@ -50,8 +50,8 @@ def cli():
     segment_parser = subparsers.add_parser("segment", help="Segment the extracted text.", description="Segment all text files in a folder. The tool looks for a folder named 'pages' with the language code at the end, e.g.: 'pages-en'. The output is a 'segments' folder and a 'unique-segments' text file with the language ISO code at the end.")
     segment_parser.add_argument("indir", help="Folder where the corpus to segment is stored, i.e., the 'pages' folder.")
     segment_parser.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", default='segment.srx', required=False)
-    # segment_parser.add_argument("-l", "--srxlang", type=str, help="The language as stated in the SRX file, i.e. the name of the language.", required=True)
     segment_parser.add_argument("--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
+    segment_parser.add_argument("--force-language", type=str, help="If your language is not in the SRX file you can try with the rules of another one or override the default segmenter with one of the following: Default, Generic, ByLineBreak or ByTwoLineBreaks.", required=False)
     segment_parser.add_argument("--outdir", type=str, help="Output directory in which to save the segmented files. If not specified, it will be saved in the same directory as the input file.", required=False)
     segment_parser.set_defaults(func=segment_corpus)
 
