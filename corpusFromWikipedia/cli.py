@@ -52,6 +52,7 @@ def cli():
     segment_parser.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", default='segment.srx', required=False)
     segment_parser.add_argument("--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
     segment_parser.add_argument("--force-language", type=str, help="If your language is not in the SRX file you can try with the rules of another one or override the default segmenter with one of the following: Default, Generic, ByLineBreak or ByTwoLineBreaks.", required=False)
+    segment_parser.add_argument("--force-segmenter", choices=["spacy", "stanza"], help="Use a spaCy or Stanza sentence segmenter. Note that they are slower than the SRX implementation, but useful if your language is only supported in one of these libraries.", required=False)
     segment_parser.add_argument("--outdir", type=str, help="Output directory in which to save the segmented files. If not specified, it will be saved in the same directory as the input file.", required=False)
     segment_parser.set_defaults(func=segment_corpus)
 
