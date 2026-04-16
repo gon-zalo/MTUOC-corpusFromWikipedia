@@ -155,7 +155,7 @@ def segment_corpus(args):
     srxfile=args.srxfile
     rules = parse(srxfile)
     languages = list(rules.keys())
-    force_language = args.force_language
+    force_srx_lang = args.force_srx_lang
     force_segmenter = args.force_segmenter
 
     indir = args.indir # should be the corpora folder inside outputs
@@ -173,12 +173,12 @@ def segment_corpus(args):
             ending = folder.name.split("-") # splitting folder name to get the language code
             ending = ending[-1]
 
-            if force_language:
+            if force_srx_lang:
                 print(f"Overriding SRX language configuration.")
-                srxlang_name = force_language.capitalize()
+                srxlang_name = force_srx_lang.capitalize()
                 print(f"{srxlang_name} chosen")
 
-            if not force_language and not force_segmenter: # if we want to use the srx file
+            if not force_srx_lang and not force_segmenter: # if we want to use the srx file
                 srxlang_name, srxlang_code = get_language(ending)
                 if not srxlang_name in languages:
                     print("Language ",srxlang_name," not available in ", srxfile)
@@ -190,7 +190,7 @@ def segment_corpus(args):
 
             print(f"Segmenting files in {srxlang_name}")
 
-            if not force_language:
+            if not force_srx_lang:
                 segments_folder = indir / f'segments-{srxlang_code}'
                 segments_folder.mkdir(parents=True, exist_ok=True)
             else:
@@ -224,7 +224,7 @@ def segment_corpus(args):
                                 else:
                                     sortida.write("\n".join(segments) + "\n")
 
-            if not force_language:
+            if not force_srx_lang:
                 sort_uniq_shuf(segments_folder, srxlang_code, outdir)
 
             else:
