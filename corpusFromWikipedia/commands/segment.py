@@ -118,7 +118,7 @@ def detect_encoding(file_path):
 
 def sort_uniq_shuf(segments_folder, lang_code, outdir):
     import subprocess
-    cmd = f'cat {segments_folder}/* | sort | uniq | shuf > {outdir}/unique-segments-{lang_code.lower()}.txt' 
+    cmd = f'find {segments_folder}/ -type f -exec cat {{}} + | sort | uniq | shuf > {outdir}/unique-segments-{lang_code.lower()}.txt' 
     subprocess.run(
         cmd,
         shell=True,
