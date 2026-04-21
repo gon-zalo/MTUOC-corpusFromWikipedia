@@ -58,7 +58,7 @@ def cli():
 
 # ALIGN SUBPARSER
     align_parser = subparsers.add_parser("align", help="Perform bitext mining and alignment between two corpora.", description="Bitext mine and align parallel sentences from two lists of monolingual sentences. The input files should be two text files of segmented text named: unique-segments and containing the language ISO code at the end, e.g.: 'unique-segments-en.txt. The output is an aligned segments text file.")
-    align_parser.add_argument("indir", nargs=2, help="Path to the folder that contains the unique segments files.")
+    align_parser.add_argument("indir", nargs=2, help="Paths to the folders that contain the unique segments files. Two paths (source and target) should be introduced.")
     align_parser.add_argument("-dev", "--device", choices=["gpu", "cpu"], default="gpu", dest="device", help="Device used (GPU or CPU). Default: GPU.", required=False)
     # align_parser.add_argument("--file-by-file", help="Align segments file by file, as opposed to in bulk" , default=True, action="store_true", required=False) # not implemented
     align_parser.add_argument("--outdir", help="Output directory in which to save the aligned segments files. If not specified, it will be saved in the same directory as the input file.", required=False)
