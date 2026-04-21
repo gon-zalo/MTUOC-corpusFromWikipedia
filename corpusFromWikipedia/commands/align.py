@@ -86,12 +86,15 @@ def align_corpora(args):
     if device == 'gpu' and not torch.cuda.is_available():
         print("GPU requested but not found. Using CPU.")
         device = 'cpu'
-    input_directories = args.indir
+    indir = args.indir
+    optional_indir = args.optional_indir
 
-    indir_source = Path(input_directories[0])
-    indir_target = Path(input_directories[1])
+    indir_source = Path(indir)
+    input_directories = [indir_source]
 
-    input_directories = [indir_source, indir_target]
+    if optional_indir:
+        indir_target = Path(optional_indir)
+        input_directories.append(indir_target)
 
     unique_segments_files = []
     unique_segments_files_codes = []
@@ -104,15 +107,21 @@ def align_corpora(args):
                 unique_segments_files.append(file)
                 language_code = file.stem.split("-")
                 unique_segments_files_codes.append(language_code[-1])
-    print("")
-    
+
     source_file, target_file = unique_segments_files
     source_file_code, target_file_code = unique_segments_files_codes
-    source_lang_name = get_language(source_file_code)
-    target_lang_name = get_language(target_file_code)
-    print(f"\nAligning {source_lang_name} and {target_lang_name}")
+    source_lang_name, source_lang_code = get_language(source_file_code)
+    target_lang_name, target_lang_code = get_language(target_file_code)
+    print(f"\nAligning {source_lang_name} and {target_lang_name}\n")
 
-    outdir = args.outdir or indir
+    outdir = args.outdir
+    if not outdir:
+        if len(input_directories) > 1: # if we are aligning corpora in different folders
+            outdir = indir_source.parent / f"aligned-{source_lang_code}-{target_lang_code}/"
+            if not outdir.exists():
+                outdir.mkdir(parents=True, exist_ok=True)
+        else: # else just save the file in the same input directory
+            outdir = indir
 
     #Model we want to use for bitext mining. LaBSE achieves state-of-the-art performance
     model_name = 'LaBSE'
@@ -235,7 +244,6 @@ def align_corpora(args):
     seen_src, seen_trg = set(), set()
 
     #Extact list of parallel sentences
-    print("Write sentences to disc")
     sentences_written = 0
     #with gzip.open(sys.argv[3], 'wt', encoding='utf8') as fOut:
     outfile = outdir / f'aligned-segments-{source_file_code}-{target_file_code}.txt'
@@ -257,4 +265,4 @@ def align_corpora(args):
 
                 sentences_written += 1
 
-    print(f"{sentences_written} sentences written. Aligned segments file saved.")
+    print(f"{sentences_written} sentences aligned.\nAligned segments file saved.")
