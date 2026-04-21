@@ -1,4 +1,6 @@
 # align functions
+from ..utils.get_language import get_language
+
 def score(x, y, fwd_mean, bwd_mean, margin):
     return margin(x.dot(y), (fwd_mean + bwd_mean) / 2)
 
@@ -84,24 +86,32 @@ def align_corpora(args):
     if device == 'gpu' and not torch.cuda.is_available():
         print("GPU requested but not found. Using CPU.")
         device = 'cpu'
-    indir = args.indir
+    input_directories = args.indir
 
-    indir = Path(indir)
+    indir_source = Path(input_directories[0])
+    indir_target = Path(input_directories[1])
+
+    input_directories = [indir_source, indir_target]
 
     unique_segments_files = []
     unique_segments_files_codes = []
     print("")
-    for file in indir.iterdir():
-        if file.is_file() and file.name.startswith("unique-segments"):
-            print(f"Unique segments file {file.name} found")
-            unique_segments_files.append(file)
-            language_code = file.stem.split("-")
-            unique_segments_files_codes.append(language_code[-1])
-    print("")
 
+    for indir in input_directories:
+        for file in indir.iterdir():
+            if file.is_file() and file.name.startswith("unique-segments"):
+                print(f"Unique segments file {file.name} found")
+                unique_segments_files.append(file)
+                language_code = file.stem.split("-")
+                unique_segments_files_codes.append(language_code[-1])
+    print("")
+    
     source_file, target_file = unique_segments_files
     source_file_code, target_file_code = unique_segments_files_codes
-    
+    source_lang_name = get_language(source_file_code)
+    target_lang_name = get_language(target_file_code)
+    print(f"\nAligning {source_lang_name} and {target_lang_name}")
+
     outdir = args.outdir or indir
 
     #Model we want to use for bitext mining. LaBSE achieves state-of-the-art performance
@@ -164,7 +174,7 @@ def align_corpora(args):
         model.add_module('dense', dense)
 
 
-    print("Read source file")
+    print(f"Reading source ({source_lang_name}) file")
     source_sentences = set()
     with file_open(source_file) as fIn:
         for line in tqdm.tqdm(fIn):
@@ -172,7 +182,7 @@ def align_corpora(args):
             if len(line) >= min_sent_len and len(line) <= max_sent_len:
                 source_sentences.add(line)
 
-    print("Read target file")
+    print(f"Reading target ({target_lang_name}) file")
     target_sentences = set()
     with file_open(target_file) as fIn:
         for line in tqdm.tqdm(fIn):
@@ -247,5 +257,4 @@ def align_corpora(args):
 
                 sentences_written += 1
 
-    print(f"Done. {sentences_written} sentences written")
-    
+    print(f"{sentences_written} sentences written. Aligned segments file saved.")
