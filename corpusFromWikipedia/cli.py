@@ -61,6 +61,7 @@ def cli():
     align_parser.add_argument("indir", help="Path to the folder that contains the unique segments files (e.g. corpus-en-ca/).")
     align_parser.add_argument("optional_indir", nargs='?', help="Use this argument too if your corpora are located in separate folders (e.g. corpus-en/ corpus-ca/)", default=None)
     align_parser.add_argument("-dev", "--device", choices=["gpu", "cpu"], default="gpu", dest="device", help="Device used (GPU or CPU). Default: GPU.", required=False)
+    # align_parser.add_argument("--gpu-id", help="GPU id to use if --device gpu. Default: 0.")
     # align_parser.add_argument("--file-by-file", help="Align segments file by file, as opposed to in bulk" , default=True, action="store_true", required=False) # not implemented
     align_parser.add_argument("--outdir", help="Output directory in which to save the aligned segments files. If not specified, it will be saved in the same directory as the input file.", required=False)
     align_parser.set_defaults(func=align_corpora)
