@@ -235,7 +235,7 @@ def create_corpora(args):
         outdir.mkdir(parents=True)
         print(f"Creating folder {outdir}")
     elif outdir.exists() and continue_creation:
-        print(f"{outdir} found. Continuing corpus creation")
+        print(f"{outdir} found. The creation of the corpus will continue.")
     
     categories = args.categories
     database = args.database
@@ -373,10 +373,11 @@ def create_corpora(args):
             processed_articles_path.touch()
 
         else: # if it exists open it, read the titles and add them to the set that it's getting checked later on
+            print("Processed articles file found")
             with open(processed_articles_path, "r", encoding='utf-8') as f:
                 for line in f:
                     processed_articles_set.add(line.strip())
-                print(f"Number of processed articles: {len(processed_articles_set)}")
+            print(f"Number of processed articles so far: {len(processed_articles_set)}")
 
         if not os.path.exists(pagesdirpath):
             os.makedirs(pagesdirpath) 
