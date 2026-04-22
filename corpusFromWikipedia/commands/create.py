@@ -198,7 +198,8 @@ def create_corpora(args):
     dumps_path = Path(dumps)
 
     outdir = args.outdir
-
+    continue_creation = args.continue_creation
+    
     if lang2: # if bilingual
         print("Creating bilingual corpus")
         lang1_name, lang1_code = get_language(lang1)
@@ -227,12 +228,14 @@ def create_corpora(args):
 
 
     outdir = Path(outdir)
-    if outdir.exists():
+    if outdir.exists() and not continue_creation:
         print("Directory already exists, choose another name")
         sys.exit()
-    else:
+    elif not outdir.exists() and not continue_creation:
         outdir.mkdir(parents=True)
         print(f"Creating folder {outdir}")
+    elif outdir.exists() and continue_creation:
+        print(f"{outdir} found. Continuing corpus creation")
     
     categories = args.categories
     database = args.database
@@ -354,10 +357,8 @@ def create_corpora(args):
 
         usertitles_set = set(usertitles) # transforming list into a set for faster lookup
 
-        # print(f"\nTitles of the pages to process in {lang_name}: {usertitles_set}\n") # for testing purposes
         print(f"\nProcessing pages in {lang_name}")
         print(f"Number of pages to process: {len(usertitles_set)}")
-        # print("Accessing pages files...")
 
         pages_processed = 0 # counter to keep track of the number of pages processed
         pagesdir="pages-"+lang_code
@@ -429,15 +430,15 @@ def create_corpora(args):
 
                                     processed_articles_set.add(page.title)
                                     with open(processed_articles_path, "a", encoding='utf-8') as log_file: # adding titles to processed articles file and set
-                                        log_file.write(page.title + "\n")
+                                        log_file.write("\n" + page.title)
                                     
                                     print(f"Processed articles: {len(processed_articles_set)}")
             
                                 except:
                                     print("ERROR:",sys.exc_info())
-                                    print(f"Category namespace for {lang_name} is missing.")
+                                    print(f"Category namespace for {lang_name} might be missing.")
                             # print("Page processed!")
-                            pages_processed += 1
-                            print(f"Processed {pages_processed} out of {len(usertitles_set)}")
+                            # pages_processed += 1
+                            # print(f"Processed {pages_processed} out of {len(usertitles_set)}")
 
     # return pagesdirpath # this return is doing nothing
