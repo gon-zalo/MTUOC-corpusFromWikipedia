@@ -44,7 +44,7 @@ def cli():
     create_parser.add_argument('--database', action="store", dest="database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite', default= 'database/CCWikipedia-20251201.sqlite', required=False)
     create_parser.add_argument('--dumps', help='Wikipedia dumps path. Default: dumps/', default="dumps", required=False)   
     create_parser.add_argument('--outdir', help='Name of the output directory. Default: corpora-lang1-lang2/. Language codes will be added automatically.',required=False)
-    create_parser.add_argument('--continue', dest='continue_creation', help='Continue a previously interrupted corpora creation process.')
+    create_parser.add_argument('--continue', dest='continue_creation', help='Continue a previously interrupted corpora creation process.', action='store_true', required=False)
     create_parser.set_defaults(func=create_corpora)
 
 # SEGMENT SUBPARSER
