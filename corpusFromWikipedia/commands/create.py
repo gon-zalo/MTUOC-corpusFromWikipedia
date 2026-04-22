@@ -362,6 +362,21 @@ def create_corpora(args):
         pages_processed = 0 # counter to keep track of the number of pages processed
         pagesdir="pages-"+lang_code
         pagesdirpath = os.path.join(outdir, pagesdir) # change to use Path library!
+
+        processed_articles_set = set()
+        processed_articles_file = f'processed-articles-{lang_code}.txt'
+        processed_articles_path = outdir / processed_articles_file
+
+        if not processed_articles_path.exists():
+            print(f"processed-articles{lang_code}.txt file created")
+            processed_articles_path.touch()
+
+        else: # if it exists open it, read the titles and add them to the set that it's getting checked later on
+            with open(processed_articles_path, "r", encoding='utf-8') as f:
+                for line in f:
+                    processed_articles_set.add(line.strip())
+                print(f"Number of processed articles: {len(processed_articles_set)}")
+
         if not os.path.exists(pagesdirpath):
             os.makedirs(pagesdirpath) 
             
@@ -385,6 +400,10 @@ def create_corpora(args):
 
                 else:
                     if not page.redirect:  # Skip redirect pages
+
+                        if page.title in processed_articles_set:
+                            continue
+
                         if page.title in usertitles_set: # using set for faster lookup
                             print(f"Processing page: {page.title}")
                             for revision in page:
@@ -407,8 +426,13 @@ def create_corpora(args):
                                         if not linia.startswith(category_namespaces[lang_code]) and not linia.startswith("|") and not linia.startswith("<") and not linia.startswith("!") and not linia.startswith("{")and len(linia)>0:
                                             sortida.write(linia+"\n")
                                     sortida.close()
-            
 
+                                    processed_articles_set.add(page.title)
+                                    with open(processed_articles_path, "a", encoding='utf-8') as log_file: # adding titles to processed articles file and set
+                                        log_file.write(page.title + "\n")
+                                    
+                                    print(f"Processed articles: {len(processed_articles_set)}")
+            
                                 except:
                                     print("ERROR:",sys.exc_info())
                                     print(f"Category namespace for {lang_name} is missing.")
