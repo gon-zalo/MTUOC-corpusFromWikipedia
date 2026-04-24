@@ -40,7 +40,7 @@ def cli():
     create_parser.add_argument('lang2', help='Name or ISO code of the target language. Keep empty to create a monolingual corpus.', nargs="?", default=None)
     create_parser.add_argument("categories", action="store", nargs="?", help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,). Keep empty to create a corpus of the whole dump.')
     create_parser.add_argument('--depth', type=int, help='The category level depth.', required=False)
-    create_parser.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalents to L1 pages.', required=False)
+    create_parser.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalent L1 pages.', required=False)
     create_parser.add_argument('--database', action="store", dest="database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite', default= 'database/CCWikipedia-20251201.sqlite', required=False)
     create_parser.add_argument('--dumps', help='Wikipedia dumps path. Default: dumps/', default="dumps", required=False)   
     create_parser.add_argument('--outdir', help='Name of the output directory. Default: corpora-lang1-lang2/. Language codes will be added automatically.',required=False)
