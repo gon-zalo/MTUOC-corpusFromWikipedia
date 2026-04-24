@@ -211,7 +211,7 @@ def create_corpora(args):
         dumpL2 = find_dumps(dumps_path, lang2_code, lang2_name)
 
         if not outdir:
-            outdir = f'../corpora/corpus-{lang1_code}-{lang2_code}'
+            outdir = f'../corpora/corpus-{lang1_code}-{lang2_code}' # add parallel
         else:
             outdir = f'../corpora/{outdir}-{lang1_code}-{lang2_code}'
 
@@ -223,9 +223,9 @@ def create_corpora(args):
         dumpL1 = find_dumps(dumps_path, lang1_code, lang1_name)
 
         if not outdir:
-            outdir = f'../corpora/corpus-{lang1_code}'
+            outdir = f'../corpora/monolingual/corpus-{lang1_code}'
         else:
-            outdir = f'../corpora/{outdir}-{lang1_code}'
+            outdir = f'../corpora/monolingual/{outdir}-{lang1_code}'
 
 
     outdir = Path(outdir)
