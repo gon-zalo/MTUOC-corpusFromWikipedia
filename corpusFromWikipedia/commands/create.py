@@ -394,7 +394,7 @@ def create_corpora(args):
             
 
             for page in dump:
-                if pages_processed == len(usertitles_set): # added so that the parsing stops once all the necessary pages have been processed which saves time and fixes some pages being processed more than once
+                if len(processed_articles_set) == len(usertitles_set): # added so that the parsing stops once all the necessary pages have been processed which saves time and fixes some pages being processed more than once
                     print(f"\nAll pages in {lang_name} processed!")
                     print("----------------------\n")
                     break
@@ -427,18 +427,16 @@ def create_corpora(args):
                                         if not linia.startswith(category_namespaces[lang_code]) and not linia.startswith("|") and not linia.startswith("<") and not linia.startswith("!") and not linia.startswith("{")and len(linia)>0:
                                             sortida.write(linia+"\n")
                                     sortida.close()
+                                    print("Article processed!")
 
                                     processed_articles_set.add(page.title.replace("_", " "))
                                     with open(processed_articles_path, "a", encoding='utf-8') as log_file: # adding titles to processed articles file and set
                                         log_file.write("\n" + page.title.replace("_", " "))
                                     
-                                    print(f"Processed articles: {len(processed_articles_set)}")
+                                    print(f"Processed articles: {len(processed_articles_set)}\n")
             
                                 except:
                                     print("ERROR:",sys.exc_info())
                                     print(f"Category namespace for {lang_name} might be missing.")
-                            print("Page processed!")
-                            # pages_processed += 1
-                            # print(f"Processed {pages_processed} out of {len(usertitles_set)}")
 
     # return pagesdirpath # this return is doing nothing
