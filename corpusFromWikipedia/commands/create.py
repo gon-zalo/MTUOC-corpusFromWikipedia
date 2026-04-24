@@ -403,6 +403,7 @@ def create_corpora(args):
                     if not page.redirect:  # Skip redirect pages
 
                         if page.title in processed_articles_set:
+                            print("Article already processed, continuing")
                             continue
 
                         if page.title in usertitles_set: # using set for faster lookup
@@ -429,9 +430,9 @@ def create_corpora(args):
                                     sortida.close()
                                     print("Article processed!")
 
-                                    processed_articles_set.add(page.title.replace("_", " "))
+                                    processed_articles_set.add(page.title)
                                     with open(processed_articles_path, "a", encoding='utf-8') as log_file: # adding titles to processed articles file and set
-                                        log_file.write("\n" + page.title.replace("_", " "))
+                                        log_file.write("\n" + page.title)
                                     
                                     print(f"Processed articles: {len(processed_articles_set)}\n")
             
