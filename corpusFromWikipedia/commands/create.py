@@ -357,8 +357,8 @@ def create_corpora(args):
 
         usertitles_set = set(usertitles) # transforming list into a set for faster lookup
 
-        print(f"\nProcessing pages in {lang_name}")
-        print(f"Number of pages to process: {len(usertitles_set)}\n")
+        print(f"\nProcessing articles in {lang_name}")
+        print(f"Number of articles to process: {len(usertitles_set)}\n")
 
         pages_processed = 0 # counter to keep track of the number of pages processed
         pagesdir="pages-"+lang_code
@@ -397,7 +397,7 @@ def create_corpora(args):
 
             for page in dump:
                 if len(processed_articles_set) == len(usertitles_set): # added so that the parsing stops once all the necessary pages have been processed which saves time and fixes some pages being processed more than once
-                    print(f"\nAll pages in {lang_name} processed!")
+                    print(f"\nAll articles in {lang_name} processed!")
                     print("----------------------\n")
                     break
 
@@ -408,12 +408,12 @@ def create_corpora(args):
                             continue
 
                         if page.title in usertitles_set: # using set for faster lookup
-                            print(f"Processing page: {page.title}")
+                            print(f"Processing article: {page.title}")
                             for revision in page:
                                 # Extract categories from the wikitext
                                 #categories = extract_categories_from_wikitext(revision.text, category_namespace)
                                 
-                                print("Extracting text...")
+                                # print("Extracting text...")
                                 text = extract_text_from_wikitext(revision.text)
                                 import re
 
@@ -422,9 +422,8 @@ def create_corpora(args):
 
                                 full_path = os.path.join(pagesdirpath, filename)
                                 try:
-                                    print(full_path)
                                     sortida=open(full_path,"w",encoding="utf-8")
-                                    print("Writing text to file...")
+                                    # print("Writing text to file...")
                                     sortida.write(page.title+"\n")
                                     linies=text.split("\n")
                                     for linia in linies:
