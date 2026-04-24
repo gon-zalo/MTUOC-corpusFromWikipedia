@@ -403,7 +403,6 @@ def create_corpora(args):
                     if not page.redirect:  # Skip redirect pages
 
                         if page.title in processed_articles_set:
-                            print("Article already processed, continuing")
                             continue
 
                         if page.title in usertitles_set: # using set for faster lookup
@@ -418,6 +417,7 @@ def create_corpora(args):
                                 filename=page.title.replace(" ","_")+".txt"
                                 full_path = os.path.join(pagesdirpath, filename)
                                 try:
+                                    print(full_path)
                                     sortida=open(full_path,"w",encoding="utf-8")
                                     print("Writing text to file...")
                                     sortida.write(page.title+"\n")
