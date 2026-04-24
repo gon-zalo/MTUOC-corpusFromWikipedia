@@ -412,14 +412,14 @@ def create_corpora(args):
                                 # Extract categories from the wikitext
                                 #categories = extract_categories_from_wikitext(revision.text, category_namespace)
                                 
-                                # print("Extracting text...")
+                                print("Extracting text...")
                                 text = extract_text_from_wikitext(revision.text)
                                                                 
                                 filename=page.title.replace(" ","_")+".txt"
                                 full_path = os.path.join(pagesdirpath, filename)
                                 try:
                                     sortida=open(full_path,"w",encoding="utf-8")
-                                    # print("Writing text to file...")
+                                    print("Writing text to file...")
                                     sortida.write(page.title+"\n")
                                     linies=text.split("\n")
                                     for linia in linies:
@@ -429,16 +429,16 @@ def create_corpora(args):
                                             sortida.write(linia+"\n")
                                     sortida.close()
 
-                                    processed_articles_set.add(page.title)
+                                    processed_articles_set.add(page.title.replace("_", " "))
                                     with open(processed_articles_path, "a", encoding='utf-8') as log_file: # adding titles to processed articles file and set
-                                        log_file.write("\n" + page.title)
+                                        log_file.write("\n" + page.title.replace("_", " "))
                                     
                                     print(f"Processed articles: {len(processed_articles_set)}")
             
                                 except:
                                     print("ERROR:",sys.exc_info())
                                     print(f"Category namespace for {lang_name} might be missing.")
-                            # print("Page processed!")
+                            print("Page processed!")
                             # pages_processed += 1
                             # print(f"Processed {pages_processed} out of {len(usertitles_set)}")
 
