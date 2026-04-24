@@ -349,10 +349,9 @@ def create_corpora(args):
         entrada=open(titlesfilepath,"r",encoding="utf-8")
         for linia in entrada:
             linia=linia.rstrip()
-            if linia.startswith("File:"): # remove images (File:...) from usertitles, having a more accurate total number of pages
-                pass
-            else:
-                usertitles.append(linia)
+            if linia.startswith("File:") or linia.startswith("Wikipedia:"): # remove images (File:...) and Wikipedia: pages from usertitles, having a more accurate total number of pages
+                continue
+            usertitles.append(linia)
         entrada.close()
 
         usertitles_set = set(usertitles) # transforming list into a set for faster lookup
