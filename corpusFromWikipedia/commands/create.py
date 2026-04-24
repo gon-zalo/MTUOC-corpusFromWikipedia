@@ -336,8 +336,6 @@ def create_corpora(args):
         # write here code thats inside create_corpora to reflect the true number of articles
         alf.close() 
     
-    print("\nCreating corpora from dumps!")
-    
     contlang=0
     for lang in langs:
 
@@ -357,7 +355,7 @@ def create_corpora(args):
 
         usertitles_set = set(usertitles) # transforming list into a set for faster lookup
 
-        print(f"\nProcessing articles in {lang_name}")
+        print(f"\nProcessing articles in: {lang_name}")
         print(f"Number of articles to process: {len(usertitles_set)}\n")
 
         pages_processed = 0 # counter to keep track of the number of pages processed
