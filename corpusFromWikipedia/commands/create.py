@@ -332,7 +332,7 @@ def create_corpora(args):
                     if contlang==1: restrictedIdentsKeys.append(ident)
                     todownload.append(data[0])
                     alf.write(data[0]+"\n")
-        print(f"Total number of pages in {lang_name}: {len(todownload)}") # this takes into account images (File:...), so its not accurate
+        # print(f"Total number of pages in {lang_name}: {len(todownload)}") # this takes into account images (File:...) and more, so its not accurate
         # write here code thats inside create_corpora to reflect the true number of articles
         alf.close() 
     
@@ -358,7 +358,7 @@ def create_corpora(args):
         usertitles_set = set(usertitles) # transforming list into a set for faster lookup
 
         print(f"\nProcessing pages in {lang_name}")
-        print(f"Number of pages to process: {len(usertitles_set)}")
+        print(f"Number of pages to process: {len(usertitles_set)}\n")
 
         pages_processed = 0 # counter to keep track of the number of pages processed
         pagesdir="pages-"+lang_code
@@ -370,7 +370,7 @@ def create_corpora(args):
         processed_articles_path = outdir / processed_articles_file
 
         if not processed_articles_path.exists():
-            print(f"processed-articles{lang_code}.txt file created")
+            print(f"processed-articles-{lang_code}.txt file created\n")
             processed_articles_path.touch()
 
         else: # if it exists open it, read the titles and add them to the set that it's getting checked later on
@@ -378,7 +378,7 @@ def create_corpora(args):
             with open(processed_articles_path, "r", encoding='utf-8') as f:
                 for line in f:
                     processed_articles_set.add(line.strip())
-            print(f"Number of processed articles so far: {len(processed_articles_set)}")
+            print(f"Number of processed articles so far: {len(processed_articles_set)}\n")
 
         if not os.path.exists(pagesdirpath):
             os.makedirs(pagesdirpath) 
@@ -417,7 +417,7 @@ def create_corpora(args):
                                 text = extract_text_from_wikitext(revision.text)
                                 import re
 
-                                clean_title = re.sub(r'[/\\:*?"<>|]', '_', page.title)
+                                clean_title = re.sub(r'[/\\:*?"<>|]', '_', page.title) # handle unwanted symbols that mess with the path, specially /
                                 filename = clean_title.replace(" ", "_") + ".txt"  
 
                                 full_path = os.path.join(pagesdirpath, filename)
