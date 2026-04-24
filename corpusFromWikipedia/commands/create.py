@@ -163,6 +163,7 @@ category_namespaces = {
     "rm": "Categoria"
 }
 from ..utils.get_language import get_language
+import re
 
 # create functions
 def extract_text_from_wikitext(wikitext):
@@ -362,6 +363,7 @@ def create_corpora(args):
         pages_processed = 0 # counter to keep track of the number of pages processed
         pagesdir="pages-"+lang_code
         pagesdirpath = os.path.join(outdir, pagesdir) # change to use Path library!
+        # pagesdirpath = outdir / pagesdir
 
         processed_articles_set = set()
         processed_articles_file = f'processed-articles-{lang_code}.txt'
@@ -413,8 +415,11 @@ def create_corpora(args):
                                 
                                 print("Extracting text...")
                                 text = extract_text_from_wikitext(revision.text)
-                                                                
-                                filename=page.title.replace(" ","_")+".txt"
+                                import re
+
+                                clean_title = re.sub(r'[/\\:*?"<>|]', '_', page.title)
+                                filename = clean_title.replace(" ", "_") + ".txt"  
+
                                 full_path = os.path.join(pagesdirpath, filename)
                                 try:
                                     print(full_path)
