@@ -211,9 +211,9 @@ def create_corpora(args):
         dumpL2 = find_dumps(dumps_path, lang2_code, lang2_name)
 
         if not outdir:
-            outdir = f'../corpora/corpus-{lang1_code}-{lang2_code}' # add parallel
+            outdir = f'../corpora/parallel/corpus-{lang1_code}-{lang2_code}' # add parallel
         else:
-            outdir = f'../corpora/{outdir}-{lang1_code}-{lang2_code}'
+            outdir = f'../corpora/parallel/{outdir}-{lang1_code}-{lang2_code}'
 
     else: # if monolingual
         print("Creating monolingual corpus")
@@ -248,7 +248,7 @@ def create_corpora(args):
         print("Fetching categories")
         level = args.depth
         if categories and not level:
-            print("Error: '--depth' is required when categories is provided")
+            print("Error: '--depth' is required when passing categories")
             sys.exit(1)
 
         categories_list = []
@@ -306,6 +306,7 @@ def create_corpora(args):
             for d in data:
                 idents[d[0]] = 1
 
+        print(f"Fetching article names in {lang_name}")
         if restrict and contlang==2:
             identskeys=restrictedIdentsKeys
         else:
@@ -356,19 +357,19 @@ def create_corpora(args):
         usertitles_set = set(usertitles) # transforming list into a set for faster lookup
 
         print(f"\nProcessing articles in: {lang_name}")
-        print(f"Number of articles to process: {len(usertitles_set)}\n")
+        print(f"Number of articles to process: {len(usertitles_set)}\n") # this counts pages that redirect
 
-        pages_processed = 0 # counter to keep track of the number of pages processed
         pagesdir="pages-"+lang_code
         pagesdirpath = os.path.join(outdir, pagesdir) # change to use Path library!
         # pagesdirpath = outdir / pagesdir
 
         processed_articles_set = set()
-        processed_articles_file = f'processed-articles-{lang_code}.txt'
+        processed_articles_file = f'processed-articles-{lang_code}.temp'
         processed_articles_path = outdir / processed_articles_file
+        redirect_pages = 0 # counter to keep track of the number of pages that redirect
 
         if not processed_articles_path.exists():
-            print(f"processed-articles-{lang_code}.txt file created\n")
+            print(f"processed-articles-{lang_code}.temp file created\n")
             processed_articles_path.touch()
 
         else: # if it exists open it, read the titles and add them to the set that it's getting checked later on
@@ -383,7 +384,6 @@ def create_corpora(args):
             
         if contlang==1: dump_path=dumpL1           
         if contlang==2: dump_path=dumpL2
-        
         with bz2.open(dump_path, 'rb') as f:
             # Parse the dump file
             # print("Parsing dump file...")
@@ -394,12 +394,16 @@ def create_corpora(args):
             
 
             for page in dump:
-                if len(processed_articles_set) == len(usertitles_set): # added so that the parsing stops once all the necessary pages have been processed which saves time and fixes some pages being processed more than once
+                if len(processed_articles_set) == (len(usertitles_set) - redirect_pages): # added so that the parsing stops once all the necessary pages have been processed which saves time and fixes some pages being processed more than once
                     print(f"\nAll articles in {lang_name} processed!")
+                    # add removal of processed_articles_file?
                     print("----------------------\n")
                     break
 
                 else:
+                    if page.redirect:
+                        redirect_pages += 1
+
                     if not page.redirect:  # Skip redirect pages
 
                         if page.title in processed_articles_set:
