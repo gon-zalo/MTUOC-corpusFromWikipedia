@@ -29,16 +29,16 @@ def cli():
     parser = argparse.ArgumentParser(
         description=
         '''
-        Tool that allows the creation, segmentation, alignment, rescoring and segment selection of parallel corpora from Wikipedia. It supports step-by-step execution and full pipeline execution. That is, commands may be run individually, e.g., in order to inspect results between steps, or execute the entire workflow at once using the 'pipeline' command. The tool also allows the creation and segmentation of monolingual corpora.
+        Tool that allows the creation, segmentation, alignment, rescoring and segment selection of parallel corpora from Wikipedia. It supports step-by-step execution and full pipeline execution. That is, commands may be run individually, e.g., in order to inspect results between steps, or execute the entire workflow at once using the 'pipeline' command.
         '''
         )
     subparsers = parser.add_subparsers(required=True)
     
 # CREATE SUBPARSER
-    create_parser = subparsers.add_parser("create", help="Create parallel corpora from Wikipedia.", description="Create parallel corpora from Wikipedia dumps.")
+    create_parser = subparsers.add_parser("create", help="Create a corpus from Wikipedia.", description="Create a corpus or parallel corpora from Wikipedia dumps.")
     create_parser.add_argument('lang1', help='Name or ISO code of the source language.')
     create_parser.add_argument('lang2', help='Name or ISO code of the target language. Keep empty to create a monolingual corpus.', nargs="?", default=None)
-    create_parser.add_argument("categories", action="store", nargs="?", help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,). Keep empty to create a corpus of the whole dump.')
+    create_parser.add_argument("--categories", action="store", help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,).', required=False)
     create_parser.add_argument('--depth', type=int, help='The category level depth.', required=False)
     create_parser.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalent L1 pages.', required=False)
     create_parser.add_argument('--database', action="store", dest="database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite', default= 'database/CCWikipedia-20251201.sqlite', required=False)
@@ -48,12 +48,12 @@ def cli():
     create_parser.set_defaults(func=create_corpora)
 
 # SEGMENT SUBPARSER
-    segment_parser = subparsers.add_parser("segment", help="Segment the extracted text.", description="Segment all text files in a folder. The tool looks for a folder named 'pages' with the language code at the end, e.g.: 'pages-en'. The output is a 'segments' folder and a 'unique-segments' text file with the language ISO code at the end.")
+    segment_parser = subparsers.add_parser("segment", help="Segment the extracted corpus.", description="Segment all text files in a folder. The tool looks for a folder named 'pages' with the language code at the end, e.g.: 'pages-en'. The output is a 'segments' folder and a 'unique-segments' text file with the language ISO code at the end.")
     segment_parser.add_argument("indir", help="Folder where the corpus to segment is stored, i.e., the 'pages' folder.")
     segment_parser.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", default='segment.srx', required=False)
     segment_parser.add_argument("--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
-    segment_parser.add_argument("--force-srx-lang", help="Override the default SRX language configuration if your language is not available in the file. Use another language or one of the following: Default, Generic, ByLineBreak or ByTwoLineBreaks.", required=False)
-    segment_parser.add_argument("--force-segmenter", choices=["spacy", "stanza"], help="Use a spaCy or Stanza sentence segmenter instead of SRX. Note that they are slower than the SRX implementation, but useful if your language is supported in one of these libraries and not in the SRX file.", required=False)
+    segment_parser.add_argument("--force-srx-lang", help="Override the default SRX language configuration if your language is not available in the file. Yoy may use one of the following: Default, Generic, ByLineBreak or ByTwoLineBreaks.", required=False)
+    segment_parser.add_argument("--force-segmenter", choices=["stanza"], help="Use a Stanza sentence segmenter instead of SRX. Note that it is slower than the SRX implementation, but useful if your language is supported in this library and not in the SRX file.", required=False)
     segment_parser.add_argument("--outdir", type=str, help="Output directory in which to save the segmented files. If not specified, it will be saved in the same directory as the input file.", required=False)
     segment_parser.set_defaults(func=segment_corpus)
 
@@ -76,7 +76,7 @@ def cli():
     rescore_parser.set_defaults(func=rescore_corpus)
 
 # SELECT SUBPARSER
-    select_parser = subparsers.add_parser("select", help="Filter the rescored parallel segments", description="Filter the rescored segments based on the defined quality thresholds. The input file should be a text file of rescored segments containing the ISO language codes, e.g.: 'rescored-segments-en-es.txt'. The output file is a selected segments text file.")
+    select_parser = subparsers.add_parser("select", help="Filter the rescored parallel segments.", description="Filter the rescored segments based on the defined quality thresholds. The input file should be a text file of rescored segments containing the ISO language codes, e.g.: 'rescored-segments-en-es.txt'. The output file is a selected segments text file.")
     select_parser.add_argument("indir", help="Path to the folder that contains a rescored segments file.  This file is meant to be the resulting one from the rescore function")
     select_parser.add_argument("--sldc", type=float, help="The minimum source language detection confidence. Default value is 0.75", required=False, default=0.75)
     select_parser.add_argument("--tldc", type=float, help="The minimum target language detection confidence. Default value is 0.75", required=False, default=0.75)
