@@ -245,7 +245,9 @@ def segment_corpus(args):
                                 continue
 
                             segments = segmenta(text, srxfile, srxlang_name)
-
+                            if isinstance(segments, str):
+                                segments = segments.splitlines()
+                                
                             for segment in segments:
                                 sortida.write(segment + "\n")
 
