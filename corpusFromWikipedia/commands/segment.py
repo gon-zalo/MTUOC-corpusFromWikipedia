@@ -238,14 +238,16 @@ def segment_corpus(args):
                     with open(outfile, "w", encoding="utf-8") as sortida:
                         # process file here
                         for linia in entrada:
-                            doc = json.loads(linia)
-                            text = doc["text"]
+                            try:
+                                doc = json.loads(linia)
+                                text = doc["text"]
+                            except Exception:
+                                continue
 
                             segments = segmenta(text, srxfile, srxlang_name)
 
-                            if len(segments) > 0:
-                                for segment in segments:
-                                    sortida.write(segment + "\n")
+                            for segment in segments:
+                                sortida.write(segment + "\n")
 
             if not force_srx_lang:
                 sort_uniq_shuf(segments_folder, srxlang_code, outdir)
