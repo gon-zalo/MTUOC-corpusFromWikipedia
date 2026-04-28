@@ -151,6 +151,7 @@ def external_segmenter(nlp, text, external_segmenter):
 def segment_corpus(args):
     import sys
     from pathlib import Path
+    import json
     print("\nRunning segment command")
 
     # accessing args
@@ -202,6 +203,7 @@ def segment_corpus(args):
             if force_segmenter: # if using stanza or spacy
                 nlp = load_external_segmenter(srxlang_name, srxlang_code, force_segmenter.lower())
 
+            # txt files
             for text_file in folder.rglob("*.txt"): # accessing all txt files
                 encoding = detect_encoding(text_file)
                 # reading the file
@@ -225,6 +227,31 @@ def segment_corpus(args):
                                     sortida.write(segments + "\n")
                                 else:
                                     sortida.write("\n".join(segments) + "\n")
+
+            # jsonl files test
+            for jsonl_file in folder.rglob("*.jsonl"):
+                # reading the file
+                with open(jsonl_file, "r", encoding='utf-8') as entrada:
+                    
+                    outfile = segments_folder / (Path(jsonl_file).stem + ".segmented.txt")
+                
+                    with open(outfile, "w", encoding="utf-8") as sortida:
+                        # process file here
+                        for linia in entrada:
+                            doc = json.loads(linia)
+                            text = doc[text]
+
+                            segments = segmenta(text, srxfile, srxlang_name)
+
+                            if len(segments) > 0:
+                                if paramark:
+                                    sortida.write("<p>\n")
+
+                                if not force_segmenter:
+                                    sortida.write(segments + "\n")
+                                else:
+                                    for segment in segments:
+                                        sortida.write(segment + "\n")
 
             if not force_srx_lang:
                 sort_uniq_shuf(segments_folder, srxlang_code, outdir)
