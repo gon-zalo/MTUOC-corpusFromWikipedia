@@ -204,29 +204,29 @@ def segment_corpus(args):
                 nlp = load_external_segmenter(srxlang_name, srxlang_code, force_segmenter.lower())
 
             # txt files
-            for text_file in folder.rglob("*.txt"): # accessing all txt files
-                encoding = detect_encoding(text_file)
-                # reading the file
-                with open(text_file, "r", encoding=encoding, errors="ignore") as entrada:
+            # for text_file in folder.rglob("*.txt"): # accessing all txt files
+            #     encoding = detect_encoding(text_file)
+            #     # reading the file
+            #     with open(text_file, "r", encoding=encoding, errors="ignore") as entrada:
                     
-                    outfile = segments_folder / text_file.name
-                    # writing segments in a new file of segmented sentences
-                    with open(outfile, "w", encoding="utf-8") as sortida:
-                        # process file here
-                        for linia in entrada:
-                            if force_segmenter:
-                                segments = external_segmenter(nlp, linia, force_segmenter.lower())
-                            else:
-                                segments = segmenta(linia, srxfile, srxlang_name)
+            #         outfile = segments_folder / text_file.name
+            #         # writing segments in a new file of segmented sentences
+            #         with open(outfile, "w", encoding="utf-8") as sortida:
+            #             # process file here
+            #             for linia in entrada:
+            #                 if force_segmenter:
+            #                     segments = external_segmenter(nlp, linia, force_segmenter.lower())
+            #                 else:
+            #                     segments = segmenta(linia, srxfile, srxlang_name)
 
-                            if len(segments) > 0:
-                                if paramark:
-                                    sortida.write("<p>\n")
+            #                 if len(segments) > 0:
+            #                     if paramark:
+            #                         sortida.write("<p>\n")
 
-                                if not force_segmenter:
-                                    sortida.write(segments + "\n")
-                                else:
-                                    sortida.write("\n".join(segments) + "\n")
+            #                     if not force_segmenter:
+            #                         sortida.write(segments + "\n")
+            #                     else:
+            #                         sortida.write("\n".join(segments) + "\n")
 
             # jsonl files test
             for jsonl_file in folder.rglob("*.jsonl"):
