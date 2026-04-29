@@ -1,6 +1,7 @@
 # segment functions
 from typing import (List, Set, Tuple, Dict, Optional)
 from ..utils.get_language import get_language
+from pathlib import Path
 
 class SrxSegmenter:
     """Handle segmentation with SRX regex format.
@@ -148,6 +149,47 @@ def external_segmenter(nlp, text, external_segmenter):
         doc = nlp(text)
         return [sent.text for sent in doc.sents]
     
+def pack_jsonl(input_list, output_file):
+    import json
+    with open(input_list, "r") as fl, open(output_file, "w", encoding="utf-8") as out:
+        for line in fl:
+            path = line.strip()
+
+            try:
+                with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                    text = f.read()
+
+                obj = {
+                    "text": text,
+                    "source": Path(path).name
+                }
+
+                out.write(json.dumps(obj) + "\n")
+
+            except Exception:
+                continue
+
+def chunk_corpus(pages_folder, chunks_folder):
+    import subprocess
+    import glob
+    
+    with open(f"{chunks_folder}/file_names/all_file_names.txt", "w") as outfile:
+        subprocess.run(
+            ["find", f"{pages_folder}/", "-type", "f", "-name", "*.txt"],
+            stdout=outfile,
+            check=True)
+        
+        subprocess.run(
+        ["split", "-l", "100000", f"{chunks_folder}/file_names/all_file_names.txt", f"{chunks_folder}/file_names/files_chunk_"],
+        check=True)
+
+    print("Chunking corpus...")
+    for f in glob.glob(f"{chunks_folder}/file_names/"):
+        print(f"Processing {f}")
+
+        pack_jsonl(f, f"{chunks_folder}/{f}.jsonl")
+
+
 def segment_corpus(args):
     import sys
     from pathlib import Path
@@ -160,10 +202,10 @@ def segment_corpus(args):
     languages = list(rules.keys())
     force_srx_lang = args.force_srx_lang
     force_segmenter = args.force_segmenter
+    chunk = args.chunk
 
     indir = args.indir # should be the corpora folder inside outputs
     indir = Path(indir)
-
     paramark=args.paramark
 
     outdir = args.outdir or indir
@@ -204,52 +246,63 @@ def segment_corpus(args):
                 nlp = load_external_segmenter(srxlang_name, srxlang_code, force_segmenter.lower())
 
             # txt files
-            # for text_file in folder.rglob("*.txt"): # accessing all txt files
-            #     encoding = detect_encoding(text_file)
-            #     # reading the file
-            #     with open(text_file, "r", encoding=encoding, errors="ignore") as entrada:
-                    
-            #         outfile = segments_folder / text_file.name
-            #         # writing segments in a new file of segmented sentences
-            #         with open(outfile, "w", encoding="utf-8") as sortida:
-            #             # process file here
-            #             for linia in entrada:
-            #                 if force_segmenter:
-            #                     segments = external_segmenter(nlp, linia, force_segmenter.lower())
-            #                 else:
-            #                     segments = segmenta(linia, srxfile, srxlang_name)
+            if not chunk:
+                for text_file in folder.rglob("*.txt"): # accessing all txt files
+                    encoding = detect_encoding(text_file)
+                    # reading the file
+                    with open(text_file, "r", encoding=encoding, errors="ignore") as entrada:
+                        
+                        outfile = segments_folder / text_file.name
+                        # writing segments in a new file of segmented sentences
+                        with open(outfile, "w", encoding="utf-8") as sortida:
+                            # process file here
+                            for linia in entrada:
+                                if force_segmenter:
+                                    segments = external_segmenter(nlp, linia, force_segmenter.lower())
+                                else:
+                                    segments = segmenta(linia, srxfile, srxlang_name)
 
-            #                 if len(segments) > 0:
-            #                     if paramark:
-            #                         sortida.write("<p>\n")
+                                if len(segments) > 0:
+                                    if paramark:
+                                        sortida.write("<p>\n")
 
-            #                     if not force_segmenter:
-            #                         sortida.write(segments + "\n")
-            #                     else:
-            #                         sortida.write("\n".join(segments) + "\n")
+                                    if not force_segmenter:
+                                        sortida.write(segments + "\n")
+                                    else:
+                                        sortida.write("\n".join(segments) + "\n")
 
             # jsonl files test
-            for jsonl_file in folder.rglob("*.jsonl"):
-                # reading the file
-                with open(jsonl_file, "r", encoding='utf-8') as entrada:
-                    
-                    outfile = segments_folder / (Path(jsonl_file).stem + ".segmented.txt")
-                
-                    with open(outfile, "w", encoding="utf-8") as sortida:
-                        # process file here
-                        for linia in entrada:
-                            try:
-                                doc = json.loads(linia)
-                                text = doc["text"]
-                            except Exception:
-                                continue
+            if chunk:
+                chunks_folder = indir / f"chunks-{srxlang_code}"
+                file_names_folder = chunks_folder / "file_names"
 
-                            segments = segmenta(text, srxfile, srxlang_name)
-                            if isinstance(segments, str):
-                                segments = segments.splitlines()
-                                
-                            for segment in segments:
-                                sortida.write(segment + "\n")
+                if not chunks_folder.exists():
+                    chunks_folder.mkdir(parents=True, exist_ok=True)
+                    file_names_folder.mkdir(parents=True, exist_ok=True)
+
+                chunk_corpus(pages_folder=folder, chunks_folder=chunks_folder)
+
+                for jsonl_file in chunks_folder.rglob("*.jsonl"):
+                    # reading the file
+                    with open(jsonl_file, "r", encoding='utf-8') as entrada:
+                        
+                        outfile = segments_folder / "seg-" + jsonl_file.stem + ".txt"
+                    
+                        with open(outfile, "w", encoding="utf-8") as sortida:
+                            # process file here
+                            for linia in entrada:
+                                try:
+                                    doc = json.loads(linia)
+                                    text = doc["text"]
+                                except Exception:
+                                    continue
+
+                                segments = segmenta(text, srxfile, srxlang_name)
+                                if isinstance(segments, str):
+                                    segments = segments.splitlines()
+
+                                for segment in segments:
+                                    sortida.write(segment + "\n")
 
             if not force_srx_lang:
                 sort_uniq_shuf(segments_folder, srxlang_code, outdir)

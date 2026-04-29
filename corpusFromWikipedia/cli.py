@@ -54,6 +54,7 @@ def cli():
     segment_parser.add_argument("--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
     segment_parser.add_argument("--force-srx-lang", help="Override the default SRX language configuration if your language is not available in the file. Yoy may use one of the following: Default, Generic, ByLineBreak or ByTwoLineBreaks.", required=False)
     segment_parser.add_argument("--force-segmenter", choices=["stanza"], help="Use a Stanza sentence segmenter instead of SRX. Note that it is slower than the SRX implementation, but useful if your language is supported in this library and not in the SRX file.", required=False)
+    segment_parser.add_argument("--chunk", help="Compile the whole corpus in chunks before segmenting. If the corpus is made up of millions of files, the time saved is massive. Note that individual segmented articles will not be available.", action="store_true", required=False)
     segment_parser.add_argument("--outdir", type=str, help="Output directory in which to save the segmented files. If not specified, it will be saved in the same directory as the input file.", required=False)
     segment_parser.set_defaults(func=segment_corpus)
 
