@@ -185,11 +185,11 @@ def chunk_corpus(pages_folder, chunks_folder):
         check=True)
         print("File names chunked")
 
-        print("Processing chunks")
+        print("\nProcessing chunks")
     for f in glob.glob(f"{chunks_folder}/file_names/files_chunk_*"):
         file_ending = f.split("_")
         file_ending = file_ending[-1]
-        
+
         print(f"Processing {f}")
 
         pack_jsonl(f, f"{chunks_folder}/chunk_{file_ending}.jsonl")
@@ -278,7 +278,7 @@ def segment_corpus(args):
 
             # jsonl files test
             if chunk:
-                print("Chunking corpus")
+                print("\nChunking corpus")
                 chunks_folder = indir / f"chunks-{srxlang_code}"
                 file_names_folder = chunks_folder / "file_names"
 
@@ -288,12 +288,12 @@ def segment_corpus(args):
                     file_names_folder.mkdir(parents=True, exist_ok=True)
 
                 chunk_corpus(pages_folder=folder, chunks_folder=chunks_folder)
-
+                print("\nSegmenting chunks")
                 for jsonl_file in chunks_folder.rglob("*.jsonl"):
                     # reading the file
                     with open(jsonl_file, "r", encoding='utf-8') as entrada:
                         
-                        outfile = segments_folder / "seg-" + jsonl_file.stem + ".txt"
+                        outfile = segments_folder / f"seg-{jsonl_file.stem}.txt"
                     
                         with open(outfile, "w", encoding="utf-8") as sortida:
                             # process file here
