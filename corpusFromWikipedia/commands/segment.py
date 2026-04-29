@@ -293,7 +293,7 @@ def segment_corpus(args):
                     # reading the file
                     with open(jsonl_file, "r", encoding='utf-8') as entrada:
                         
-                        outfile = segments_folder / f"seg-{jsonl_file.stem}.txt"
+                        outfile = segments_folder / f"seg_{jsonl_file.stem}.txt"
                     
                         with open(outfile, "w", encoding="utf-8") as sortida:
                             # process file here
