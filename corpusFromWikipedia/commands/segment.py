@@ -149,9 +149,9 @@ def external_segmenter(nlp, text, external_segmenter):
         doc = nlp(text)
         return [sent.text for sent in doc.sents]
     
-def pack_jsonl(input_list, output_file):
+def pack_jsonl(input_file, output_file):
     import json
-    with open(input_list, "r") as fl, open(output_file, "w", encoding="utf-8") as out:
+    with open(input_file, "r") as fl, open(output_file, "w", encoding="utf-8") as out:
         for line in fl:
             path = line.strip()
 
@@ -186,7 +186,7 @@ def chunk_corpus(pages_folder, chunks_folder):
         print("File names chunked")
 
         print("Processing chunks")
-    for f in glob.glob(f"{chunks_folder}/file_names/"):
+    for f in glob.glob(f"{chunks_folder}/file_names/files_chunk_*"):
         print(f"Processing {f}")
 
         pack_jsonl(f, f"{chunks_folder}/{f}.jsonl")
