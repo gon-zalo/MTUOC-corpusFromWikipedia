@@ -187,9 +187,12 @@ def chunk_corpus(pages_folder, chunks_folder):
 
         print("Processing chunks")
     for f in glob.glob(f"{chunks_folder}/file_names/files_chunk_*"):
+        file_ending = f.split("_")
+        file_ending = file_ending[-1]
+        
         print(f"Processing {f}")
 
-        pack_jsonl(f, f"{chunks_folder}/{f}.jsonl")
+        pack_jsonl(f, f"{chunks_folder}/chunk_{file_ending}.jsonl")
 
 
 def segment_corpus(args):
