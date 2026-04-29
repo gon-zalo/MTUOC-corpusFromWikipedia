@@ -178,12 +178,14 @@ def chunk_corpus(pages_folder, chunks_folder):
             ["find", f"{pages_folder}/", "-type", "f", "-name", "*.txt"],
             stdout=outfile,
             check=True)
-        
+
+        print("File names compiled")
         subprocess.run(
         ["split", "-l", "100000", f"{chunks_folder}/file_names/all_file_names.txt", f"{chunks_folder}/file_names/files_chunk_"],
         check=True)
+        print("File names chunked")
 
-    print("Chunking corpus...")
+        print("Processing chunks")
     for f in glob.glob(f"{chunks_folder}/file_names/"):
         print(f"Processing {f}")
 
@@ -273,11 +275,13 @@ def segment_corpus(args):
 
             # jsonl files test
             if chunk:
+                print("Chunking corpus")
                 chunks_folder = indir / f"chunks-{srxlang_code}"
                 file_names_folder = chunks_folder / "file_names"
 
                 if not chunks_folder.exists():
                     chunks_folder.mkdir(parents=True, exist_ok=True)
+                    print(f"{chunks_folder} created")
                     file_names_folder.mkdir(parents=True, exist_ok=True)
 
                 chunk_corpus(pages_folder=folder, chunks_folder=chunks_folder)
