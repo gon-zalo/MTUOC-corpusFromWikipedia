@@ -233,8 +233,8 @@ def segment_corpus(args):
 
             if force_srx_lang:
                 print(f"Overriding SRX language configuration.")
-                srxlang_name = force_srx_lang.capitalize()
-                print(f"{srxlang_name} chosen")
+                srxlang_name = force_srx_lang.lower()
+                print(f"{force_srx_lang.capitalize()} chosen")
 
             if not force_srx_lang and not force_segmenter: # if we want to use the srx file
                 srxlang_name, srxlang_code = get_language(ending)
@@ -246,13 +246,13 @@ def segment_corpus(args):
             if force_segmenter: # basically if else
                 srxlang_name, srxlang_code = get_language(ending)
 
-            print(f"Segmenting files in {srxlang_name}")
+            print(f"Segmenting files in {srxlang_name.capitalize()}")
 
             if not force_srx_lang:
                 segments_folder = indir / f'segments-{srxlang_code}'
                 segments_folder.mkdir(parents=True, exist_ok=True)
             else:
-                segments_folder = indir / f'segments-force-{srxlang_name.lower()}'
+                segments_folder = indir / f'segments-force-{srxlang_name}-{ending}'
                 segments_folder.mkdir(parents=True, exist_ok=True)
 
             if force_segmenter: # if using stanza or spacy
@@ -331,5 +331,5 @@ def segment_corpus(args):
                 sort_uniq_shuf(segments_folder, srxlang_code, outdir)
 
             else:
-                srxlang_code = f'force-{srxlang_name}-' + srxlang_code
+                srxlang_code = f'force-{srxlang_name}-{ending}'
                 sort_uniq_shuf(segments_folder, srxlang_code, outdir)
