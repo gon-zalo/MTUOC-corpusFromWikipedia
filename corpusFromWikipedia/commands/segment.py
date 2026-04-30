@@ -172,7 +172,8 @@ def pack_jsonl(input_file, output_file):
 def chunk_corpus(pages_folder, chunks_folder):
     import subprocess
     import glob
-    
+    import math
+
     with open(f"{chunks_folder}/file_names/all_file_names.txt", "w") as outfile:
         subprocess.run(
             ["find", f"{pages_folder}/", "-type", "f", "-name", "*.txt"],
@@ -180,12 +181,19 @@ def chunk_corpus(pages_folder, chunks_folder):
             check=True)
 
         print("File names compiled")
-        subprocess.run(
-        ["split", "-l", "100000", f"{chunks_folder}/file_names/all_file_names.txt", f"{chunks_folder}/file_names/files_chunk_"],
-        check=True)
-        print("File names chunked")
 
-        print("\nProcessing chunks")
+    with open(f"{chunks_folder}/file_names/all_file_names.txt", "r") as f:
+        num_files = sum(1 for file_name in f)
+
+    chunk_size = math.ceil(num_files / 100) # to compile and chunk the corpus into 100 files
+
+    print(f"Chunking corpus into 100 files. Each file contains {chunk_size} articles")
+    subprocess.run(
+    ["split", "-l", f"{chunk_size}", f"{chunks_folder}/file_names/all_file_names.txt", f"{chunks_folder}/file_names/files_chunk_"],
+    check=True)
+    print("File names chunked")
+
+    print("\nProcessing chunks")
     for f in glob.glob(f"{chunks_folder}/file_names/files_chunk_*"):
         file_ending = f.split("_")
         file_ending = file_ending[-1]
@@ -298,18 +306,26 @@ def segment_corpus(args):
                         with open(outfile, "w", encoding="utf-8") as sortida:
                             # process file here
                             for linia in entrada:
+
                                 try:
                                     doc = json.loads(linia)
                                     text = doc["text"]
                                 except Exception:
                                     continue
 
-                                segments = segmenta(text, srxfile, srxlang_name)
+                                if force_segmenter:
+                                    segments = external_segmenter(nlp, text, force_segmenter.lower())
+                                else:
+                                    segments = segmenta(text, srxfile, srxlang_name)
+
                                 if isinstance(segments, str):
                                     segments = segments.splitlines()
 
                                 for segment in segments:
-                                    sortida.write(segment + "\n")
+                                    if not force_segmenter:
+                                        sortida.write(segment + "\n")
+                                    else:
+                                        sortida.write("\n".join(segments) + "\n")
 
             if not force_srx_lang:
                 sort_uniq_shuf(segments_folder, srxlang_code, outdir)
