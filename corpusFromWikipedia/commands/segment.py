@@ -99,7 +99,7 @@ def parse(srx_filepath: str) -> Dict[str, Dict[str, List[Tuple[str, Optional[str
 
 def segmenta(cadena, srxfile, srxlang):
     srxfile=srxfile
-    srxlang= srxlang
+    srxlang = srxlang
     rules = parse(srxfile)
     
     segmenter = SrxSegmenter(rules[srxlang],cadena)
@@ -273,7 +273,7 @@ def segment_corpus(args):
                                 if force_segmenter:
                                     segments = external_segmenter(nlp, linia, force_segmenter.lower())
                                 else:
-                                    segments = segmenta(linia, srxfile, srxlang_name)
+                                    segments = segmenta(linia, srxfile, srxlang_name.capitalize())
 
                                 if len(segments) > 0:
                                     if paramark:
