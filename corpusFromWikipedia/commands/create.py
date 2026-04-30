@@ -364,7 +364,7 @@ def create_corpora(args):
         # pagesdirpath = outdir / pagesdir
 
         processed_articles_set = set()
-        processed_articles_file = f'processed-articles-{lang_code}.temp'
+        processed_articles_file = f'processed-articles-{lang_code}.txt'
         processed_articles_path = outdir / processed_articles_file
         redirect_pages = 0 # counter to keep track of the number of pages that redirect
 
