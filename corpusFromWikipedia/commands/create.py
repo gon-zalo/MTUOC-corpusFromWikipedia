@@ -175,7 +175,7 @@ def find_dumps(dumps_path, lang_code, lang_name):
     import sys
     dump = next(dumps_path.glob(f'{lang_code}*'), None)
     if dump:
-        print(f'\nDump in {lang_name} found: {str(dump)}')
+        print(f'Dump in {lang_name} found: {str(dump)}')
     else:
         print(f'{lang_name} dump not found in directory.')
         sys.exit()
@@ -202,7 +202,7 @@ def create_corpora(args):
     continue_creation = args.continue_creation
     
     if lang2: # if bilingual
-        print("Creating bilingual corpus")
+        print("Creating bilingual corpus\n")
         lang1_name, lang1_code = get_language(lang1)
         lang2_name, lang2_code = get_language(lang2)
         langs = [lang1_code, lang2_code]
@@ -364,7 +364,7 @@ def create_corpora(args):
         # pagesdirpath = outdir / pagesdir
 
         processed_articles_set = set()
-        processed_articles_file = f'processed-articles-{lang_code}.txt'
+        processed_articles_file = f'processed-articles-{lang_code}.temp'
         processed_articles_path = outdir / processed_articles_file
         redirect_pages = 0 # counter to keep track of the number of pages that redirect
 
@@ -395,8 +395,9 @@ def create_corpora(args):
 
             for page in dump:
                 if len(processed_articles_set) == (len(usertitles_set) - redirect_pages): # added so that the parsing stops once all the necessary pages have been processed which saves time and fixes some pages being processed more than once
-                    print(f"\nAll articles in {lang_name} processed!")
-                    # add removal of processed_articles_file?
+                    print(f"\nAll articles ({len(processed_articles_set)}) in {lang_name} processed!")
+                    processed_articles_path.unlink()
+                    print("Processed articles file removed")
                     print("----------------------\n")
                     break
 
