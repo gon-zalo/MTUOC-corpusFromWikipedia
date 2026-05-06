@@ -3,6 +3,7 @@ from typing import (List, Set, Tuple, Dict, Optional)
 from ..utils.get_language import get_language
 from pathlib import Path
 import sys
+from tqdm import tqdm
 
 class SrxSegmenter:
     """Handle segmentation with SRX regex format.
@@ -196,11 +197,11 @@ def chunk_corpus(pages_folder, chunks_folder):
     print("File names chunked")
 
     print("\nProcessing chunks")
-    for f in glob.glob(f"{chunks_folder}/file_names/files_chunk_*"):
+    for f in tqdm(glob.glob(f"{chunks_folder}/file_names/files_chunk_*")):
         file_ending = f.split("_")
         file_ending = file_ending[-1]
 
-        print(f"Processing {f}")
+        # print(f"Processing {f}")
 
         pack_jsonl(f, f"{chunks_folder}/chunk_{file_ending}.jsonl")
 
@@ -334,7 +335,7 @@ def segment_corpus(args):
 
                 chunk_corpus(pages_folder=folder, chunks_folder=chunks_folder)
                 print("\nSegmenting chunks")
-                for jsonl_file in chunks_folder.rglob("*.jsonl"):
+                for jsonl_file in tqdm(chunks_folder.rglob("*.jsonl")):
                     # reading the file
                     with open(jsonl_file, "r", encoding='utf-8') as entrada:
                         
