@@ -353,7 +353,7 @@ def segment_corpus(args):
                                 if force_segmenter:
                                     segments = external_segmenter(nlp, text, force_segmenter_name.lower())
                                 else:
-                                    segments = segmenta(text, srxfile, srxlang_name)
+                                    segments = segmenta(text, srxfile, srxlang_name.capitalize())
 
                                 if isinstance(segments, str):
                                     segments = segments.splitlines()
