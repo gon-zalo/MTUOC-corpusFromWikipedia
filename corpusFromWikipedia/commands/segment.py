@@ -213,7 +213,7 @@ def segment_corpus(args):
     print("\nRunning segment command")
 
     # accessing args
-    srxfile=args.srxfile
+    srxfile = args.srxfile
     rules = parse(srxfile)
     languages = list(rules.keys())
     force_srx_lang = args.force_srx_lang
@@ -225,149 +225,114 @@ def segment_corpus(args):
     paramark=args.paramark
 
     outdir = args.outdir or indir
-    my_dict = {"car": "red"}
-
-    # Unpack the first (and only) key-value pair
-    vehicle, colour = next(iter(my_dict.items()))
     
-    for folder in indir.iterdir(): # look for 'pages' folders inside the input directory
-        remove_force = False # boolean to remove 'force' from folder and file names of the language that is not being forced when using force-srx-lang
-        if folder.is_dir() and folder.name.startswith("pages"):
-            print(f"\nFolder {folder.name} found")
+    folder = indir
+    if folder.is_dir():
+        print(f"\nFolder {folder.name} found")
 
-            ending = folder.name.split("-") # splitting folder name to get the language code
-            ending = ending[-1]
+        ending = folder.name.split("-") # splitting folder name to get the language code
+        ending = ending[-1]
+        srxlang_name, srxlang_code = get_language(ending)
 
-            if force_srx_lang:
-
-                if len(force_srx_lang) > 2:
-                    print("Error: You may only pass one or two language=segmenter pairs.")
-                    sys.exit()
+        if force_srx_lang:
+            print(f"Overriding SRX language configuration.")
+            srxlang_name = force_srx_lang.lower()
+            print(f"{force_srx_lang.capitalize()} chosen")
                 
-                # segmenting ca-es: --force-srx-lang ca=generic funciona pero es=generic no
-                else: # passing one or two args
-                    for pair in force_srx_lang:
-                        if "=" in pair: 
-                            lang, seg = pair.split("=", 1)
-                            lang = lang.strip().lower()
-                            force_srx_language_name, force_srx_language_code = get_language(lang)
-                            seg = seg.strip().lower()
+        if not force_srx_lang and not force_segmenter: # if we want to use the srx file
+            srxlang_name, srxlang_code = get_language(ending)
+            if not srxlang_name in languages:
+                print("Language ",srxlang_name," not available in ", srxfile)
+                print("Available languages:",", ".join(languages))
+                sys.exit()
 
-                            if force_srx_language_code == ending:
-                                print(f"Overriding SRX language configuration!")
-                                print(f"Using segmenter {seg.lower()} for {force_srx_language_name}")
-                                srxlang_name = seg
-                                srxlang_code = force_srx_language_code 
-                            
-                            else: 
-                                # print(f"Language passed ({force_srx_language_code}) does not match folder language ({folder.name})")
-                                srxlang_name, srxlang_code = get_language(ending)
-                                remove_force = True
+        if force_segmenter: # basically if else, using stanza
+            force_segmenter_name = "stanza"
+            srxlang_name, srxlang_code = get_language(ending)
+            nlp = load_external_segmenter(srxlang_name, srxlang_code, force_segmenter_name.lower())
 
-                        elif len(force_srx_lang) == 1 and "=" not in pair: # if --force-srx-lang generic
-                            print(f"Overriding SRX language configuration.")
-                            srxlang_name = force_srx_lang[0].lower()
-                            print(f"{force_srx_lang[0].capitalize()} chosen")
+        print(f"Segmenting files in {srxlang_name.capitalize()}")
 
-                        else:
-                            print("Error: You need to pass language=segmenter pairs for one or both of your languages, e.g. estonian=generic, ligur=bylinebreak. If you are only segmenting one language you need to pass the name of the segmenter, e.g.: --force-srx-lang generic")
-                            sys.exit()
+        if not force_srx_lang:
+            segments_folder = indir / f'segments-{srxlang_code}'
+            segments_folder.mkdir(parents=True, exist_ok=True)
+
+        else:
+            segments_folder = indir / f'segments-force-{srxlang_name}-{ending}'
+            segments_folder.mkdir(parents=True, exist_ok=True)
+
+        # txt files
+        if not chunk:
+            for text_file in folder.rglob("*.txt"): # accessing all txt files
+                encoding = detect_encoding(text_file)
+                # reading the file
+                with open(text_file, "r", encoding=encoding, errors="ignore") as entrada:
                     
+                    outfile = segments_folder / text_file.name
+                    # writing segments in a new file of segmented sentences
+                    with open(outfile, "w", encoding="utf-8") as sortida:
+                        # process file here
+                        for linia in entrada:
+                            if force_segmenter:
+                                segments = external_segmenter(nlp, linia, force_segmenter_name.lower())
+                            else:
+                                segments = segmenta(linia, srxfile, srxlang_name.capitalize())
 
-            if not force_srx_lang and not force_segmenter: # if we want to use the srx file
-                srxlang_name, srxlang_code = get_language(ending)
-                if not srxlang_name in languages:
-                    print("Language ",srxlang_name," not available in ", srxfile)
-                    print("Available languages:",", ".join(languages))
-                    sys.exit()
+                            if len(segments) > 0:
+                                if paramark:
+                                    sortida.write("<p>\n")
 
-            if force_segmenter: # basically if else, using stanza
-                force_segmenter_name = "stanza"
-                srxlang_name, srxlang_code = get_language(ending)
-                nlp = load_external_segmenter(srxlang_name, srxlang_code, force_segmenter_name.lower())
-
-            print(f"Segmenting files in {srxlang_name.capitalize()}")
-
-            if not force_srx_lang or remove_force:
-                segments_folder = indir / f'segments-{srxlang_code}'
-                segments_folder.mkdir(parents=True, exist_ok=True)
-
-            else:
-                segments_folder = indir / f'segments-force-{srxlang_name}-{ending}'
-                segments_folder.mkdir(parents=True, exist_ok=True)
-
-            # txt files
-            if not chunk:
-                for text_file in folder.rglob("*.txt"): # accessing all txt files
-                    encoding = detect_encoding(text_file)
-                    # reading the file
-                    with open(text_file, "r", encoding=encoding, errors="ignore") as entrada:
-                        
-                        outfile = segments_folder / text_file.name
-                        # writing segments in a new file of segmented sentences
-                        with open(outfile, "w", encoding="utf-8") as sortida:
-                            # process file here
-                            for linia in entrada:
-                                if force_segmenter:
-                                    segments = external_segmenter(nlp, linia, force_segmenter_name.lower())
+                                if not force_segmenter:
+                                    sortida.write(segments + "\n")
                                 else:
-                                    segments = segmenta(linia, srxfile, srxlang_name.capitalize())
+                                    sortida.write("\n".join(segments) + "\n")
 
-                                if len(segments) > 0:
-                                    if paramark:
-                                        sortida.write("<p>\n")
+        # jsonl files test
+        if chunk:
+            print("\nChunking corpus")
+            chunks_folder = indir / f"chunks-{srxlang_code}"
+            file_names_folder = chunks_folder / "file_names"
 
-                                    if not force_segmenter:
-                                        sortida.write(segments + "\n")
-                                    else:
-                                        sortida.write("\n".join(segments) + "\n")
+            if not chunks_folder.exists():
+                chunks_folder.mkdir(parents=True, exist_ok=True)
+                print(f"{chunks_folder} created")
+                file_names_folder.mkdir(parents=True, exist_ok=True)
 
-            # jsonl files test
-            if chunk:
-                print("\nChunking corpus")
-                chunks_folder = indir / f"chunks-{srxlang_code}"
-                file_names_folder = chunks_folder / "file_names"
-
-                if not chunks_folder.exists():
-                    chunks_folder.mkdir(parents=True, exist_ok=True)
-                    print(f"{chunks_folder} created")
-                    file_names_folder.mkdir(parents=True, exist_ok=True)
-
-                chunk_corpus(pages_folder=folder, chunks_folder=chunks_folder)
-                print("\nSegmenting chunks")
-                for jsonl_file in tqdm(chunks_folder.rglob("*.jsonl")):
-                    # reading the file
-                    with open(jsonl_file, "r", encoding='utf-8') as entrada:
-                        
-                        outfile = segments_folder / f"seg_{jsonl_file.stem}.txt"
+            chunk_corpus(pages_folder=folder, chunks_folder=chunks_folder)
+            print("\nSegmenting chunks")
+            for jsonl_file in tqdm(chunks_folder.rglob("*.jsonl")):
+                # reading the file
+                with open(jsonl_file, "r", encoding='utf-8') as entrada:
                     
-                        with open(outfile, "w", encoding="utf-8") as sortida:
-                            # process file here
-                            for linia in entrada:
+                    outfile = segments_folder / f"seg_{jsonl_file.stem}.txt"
+                
+                    with open(outfile, "w", encoding="utf-8") as sortida:
+                        # process file here
+                        for linia in entrada:
 
-                                try:
-                                    doc = json.loads(linia)
-                                    text = doc["text"]
-                                except Exception:
-                                    continue
+                            try:
+                                doc = json.loads(linia)
+                                text = doc["text"]
+                            except Exception:
+                                continue
 
-                                if force_segmenter:
-                                    segments = external_segmenter(nlp, text, force_segmenter_name.lower())
+                            if force_segmenter:
+                                segments = external_segmenter(nlp, text, force_segmenter_name.lower())
+                            else:
+                                segments = segmenta(text, srxfile, srxlang_name.capitalize())
+
+                            if isinstance(segments, str):
+                                segments = segments.splitlines()
+
+                            for segment in segments:
+                                if not force_segmenter:
+                                    sortida.write(segment + "\n")
                                 else:
-                                    segments = segmenta(text, srxfile, srxlang_name.capitalize())
+                                    sortida.write("\n".join(segments) + "\n")
 
-                                if isinstance(segments, str):
-                                    segments = segments.splitlines()
+        if not force_srx_lang:
+            sort_uniq_shuf(segments_folder, srxlang_code, outdir)
 
-                                for segment in segments:
-                                    if not force_segmenter:
-                                        sortida.write(segment + "\n")
-                                    else:
-                                        sortida.write("\n".join(segments) + "\n")
-
-            if not force_srx_lang or remove_force:
-                sort_uniq_shuf(segments_folder, srxlang_code, outdir)
-
-            else:
-                srxlang_code = f'force-{srxlang_name}-{ending}'
-                sort_uniq_shuf(segments_folder, srxlang_code, outdir)
+        else:
+            srxlang_code = f'force-{srxlang_name}-{ending}'
+            sort_uniq_shuf(segments_folder, srxlang_code, outdir)
