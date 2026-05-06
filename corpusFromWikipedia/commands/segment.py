@@ -256,10 +256,12 @@ def segment_corpus(args):
         if not force_srx_lang:
             segments_folder = indir / f'segments-{srxlang_code}'
             segments_folder.mkdir(parents=True, exist_ok=True)
+            print(f"{segments_folder} created")
 
         else:
             segments_folder = indir / f'segments-force-{srxlang_name}-{ending}'
             segments_folder.mkdir(parents=True, exist_ok=True)
+            print(f"{segments_folder} created")
 
         # txt files
         if not chunk:
