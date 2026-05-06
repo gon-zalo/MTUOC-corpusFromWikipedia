@@ -254,12 +254,12 @@ def segment_corpus(args):
         print(f"Segmenting files in {srxlang_name.capitalize()}")
 
         if not force_srx_lang:
-            segments_folder = indir / f'segments-{srxlang_code}'
+            segments_folder = indir.parent / f'segments-{srxlang_code}'
             segments_folder.mkdir(parents=True, exist_ok=True)
             print(f"{segments_folder} created")
 
         else:
-            segments_folder = indir / f'segments-force-{srxlang_name}-{ending}'
+            segments_folder = indir.parent / f'segments-force-{srxlang_name}-{ending}'
             segments_folder.mkdir(parents=True, exist_ok=True)
             print(f"{segments_folder} created")
 
@@ -292,7 +292,7 @@ def segment_corpus(args):
         # jsonl files test
         if chunk:
             print("\nChunking corpus")
-            chunks_folder = indir / f"chunks-{srxlang_code}"
+            chunks_folder = indir.parent / f"chunks-{srxlang_code}"
             file_names_folder = chunks_folder / "file_names"
 
             if not chunks_folder.exists():
