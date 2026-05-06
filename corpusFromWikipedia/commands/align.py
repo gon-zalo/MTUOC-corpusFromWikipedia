@@ -115,9 +115,14 @@ def align_corpora(args):
     print(f"\nAligning {source_lang_name} and {target_lang_name}\n")
 
     outdir = args.outdir
+    parallel_corpora_folder = indir_source.parent.parent / "parallel"
+
+    if not parallel_corpora_folder.exists():
+        parallel_corpora_folder.mkdir(parents=True, exist_ok=True)
+
     if not outdir:
-        if len(input_directories) > 1: # if we are aligning corpora in different folders
-            outdir = indir_source.parent / f"aligned-{source_lang_code}-{target_lang_code}/"
+        if len(input_directories) > 1: # if we are aligning separate corpora in different folders
+            outdir = parallel_corpora_folder / f"aligned-{source_lang_code}-{target_lang_code}/"
             if not outdir.exists():
                 outdir.mkdir(parents=True, exist_ok=True)
         else: # else just save the file in the same input directory
