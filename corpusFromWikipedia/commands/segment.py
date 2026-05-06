@@ -255,7 +255,8 @@ def segment_corpus(args):
                             if force_srx_language_code == ending:
                                 print(f"Overriding SRX language configuration!")
                                 print(f"Using segmenter {seg.lower()} for {force_srx_language_name}")
-                                srxlang_name = seg 
+                                srxlang_name = seg
+                                srxlang_code = force_srx_language_code 
                             
                             else: 
                                 # print(f"Language passed ({force_srx_language_code}) does not match folder language ({folder.name})")
