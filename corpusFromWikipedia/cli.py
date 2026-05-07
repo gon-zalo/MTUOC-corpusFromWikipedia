@@ -48,8 +48,8 @@ def cli():
     create_parser.set_defaults(func=create_corpora)
 
 # SEGMENT SUBPARSER
-    segment_parser = subparsers.add_parser("segment", help="Segment the extracted corpus.", description="Segment all text files in a folder. The folder must have a language code at the end separated by a hyphen. If you have created a corpus using the 'create' command, this folder is named 'pages' with the language code at the end, e.g.: 'pages-en'. The output is a 'segments' folder and a 'unique-segments' text file with the language ISO code at the end.")
-    segment_parser.add_argument("indir", help="Folder where the corpus to segment is stored, i.e., the 'pages' folder.")
+    segment_parser = subparsers.add_parser("segment", help="Segment the extracted corpus.", description="Segment all text files in a folder. The folder name must contain a language code at the end separated by a hyphen from the rest. If you have created a corpus using the 'create' command, this folder is named 'pages-en'. The output is a 'segments' folder and a 'unique-segments' text file with the language ISO code at the end.")
+    segment_parser.add_argument("indir", help="Folder where the corpus to segment is stored, i.e., the 'pages-en' folder. The name must contain a hyphen and a language code at the end.")
     segment_parser.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", default='segment.srx', required=False)
     segment_parser.add_argument("--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
     segment_parser.add_argument("--force-srx-lang", help="Override the default SRX language configuration if your language is not available in the file. Yoy may use one of the following: Default, Generic, ByLineBreak or ByTwoLineBreaks.", required=False)
