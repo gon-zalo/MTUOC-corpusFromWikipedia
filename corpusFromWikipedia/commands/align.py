@@ -71,6 +71,23 @@ def file_open(filepath):
     else:
         return open(filepath, 'r', encoding='utf-8')
 
+def sentence_batches(filename, batch_size, min_len, max_len):
+    batch = []
+
+    with file_open(filename) as f:
+        for line in f:
+            line = line.strip()
+
+            if min_len <= len(line) <= max_len:
+                batch.append(line)
+
+            if len(batch) >= batch_size:
+                yield batch
+                batch = []
+
+    if batch:
+        yield batch
+
 def align_corpora(args):
     print("\nRunning align command")
     from sentence_transformers import SentenceTransformer, models
@@ -79,6 +96,10 @@ def align_corpora(args):
     import torch
     from pathlib import Path
     import numpy as np
+    import linecache
+    import faiss
+    import heapq
+
 
     device = args.device
     device = device.lower()
@@ -188,86 +209,116 @@ def align_corpora(args):
         model.add_module('dense', dense)
 
 
-    print(f"Reading source ({source_lang_name}) file")
-    source_sentences = set()
-    with file_open(source_file) as fIn:
-        for line in tqdm.tqdm(fIn):
-            line = line.strip()
-            if len(line) >= min_sent_len and len(line) <= max_sent_len:
-                source_sentences.add(line)
+    EMBED_DIM = 768
+    BATCH_SIZE = 10000
 
-    print(f"Reading target ({target_lang_name}) file")
-    target_sentences = set()
-    with file_open(target_file) as fIn:
-        for line in tqdm.tqdm(fIn):
-            line = line.strip()
-            if len(line) >= min_sent_len and len(line) <= max_sent_len:
-                target_sentences.add(line)
+    print("Building FAISS index (target side)")
 
-    print("Source Sentences:", len(source_sentences))
-    print("Target Sentences:", len(target_sentences))
+    index_y = faiss.IndexFlatIP(EMBED_DIM)
 
+    target_store_path = outdir / f"target-sentences-{target_file_code}.txt"
 
-    ### Encode source sentences
-    source_sentences = list(source_sentences)
+    with open(target_store_path, "w", encoding="utf-8") as fStore:
 
+        for batch in tqdm.tqdm(
+            sentence_batches(target_file, BATCH_SIZE, min_sent_len, max_sent_len)
+        ):
 
-    print("Encode source sentences")
-    source_embeddings = model.encode(source_sentences, show_progress_bar=True, convert_to_numpy=True)
+            emb = model.encode(
+                batch,
+                batch_size=32,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+                show_progress_bar=False
+            ).astype(np.float32)
 
+            index_y.add(emb)
 
-    ### Encode target sentences
-    target_sentences = list(target_sentences)
+            for s in batch:
+                fStore.write(s.replace("\n", " ") + "\n")
 
-    print("Encode target sentences")
-    target_embeddings = model.encode(target_sentences, show_progress_bar=True, convert_to_numpy=True)
+    heap = []
+    TOP_K_GLOBAL = 5_000_000  # optional tuning 
 
+    print("Streaming source + collecting candidates")
 
-    # Normalize embeddings
-    x = source_embeddings
-    x = x / np.linalg.norm(x, axis=1, keepdims=True)
+    src_offset = 0
 
-    y = target_embeddings
-    y = y / np.linalg.norm(y, axis=1, keepdims=True)
-
-    # Perform kNN in both directions
-    x2y_sim, x2y_ind = kNN(device, x, y, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe)
-    x2y_mean = x2y_sim.mean(axis=1)
-
-    y2x_sim, y2x_ind = kNN(device, y, x, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe)
-    y2x_mean = y2x_sim.mean(axis=1)
-
-    # Compute forward and backward scores
     margin = lambda a, b: a / b
-    fwd_scores = score_candidates(x, y, x2y_ind, x2y_mean, y2x_mean, margin)
-    bwd_scores = score_candidates(y, x, y2x_ind, y2x_mean, x2y_mean, margin)
-    fwd_best = x2y_ind[np.arange(x.shape[0]), fwd_scores.argmax(axis=1)]
-    bwd_best = y2x_ind[np.arange(y.shape[0]), bwd_scores.argmax(axis=1)]
 
-    indices = np.stack([np.concatenate([np.arange(x.shape[0]), bwd_best]), np.concatenate([fwd_best, np.arange(y.shape[0])])], axis=1)
-    scores = np.concatenate([fwd_scores.max(axis=1), bwd_scores.max(axis=1)])
-    seen_src, seen_trg = set(), set()
+    for src_batch in tqdm.tqdm(
+        sentence_batches(source_file, BATCH_SIZE, min_sent_len, max_sent_len)
+    ):
 
-    #Extact list of parallel sentences
-    sentences_written = 0
-    #with gzip.open(sys.argv[3], 'wt', encoding='utf8') as fOut:
-    outfile = outdir / f'aligned-segments-{source_file_code}-{target_file_code}.txt'
-    with open(outfile, 'w', encoding='utf-8') as fOut:
+        x = model.encode(
+            src_batch,
+            batch_size=32,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+            show_progress_bar=False
+        ).astype(np.float32)
 
-        for i in np.argsort(-scores):
-            src_ind, trg_ind = indices[i]
-            src_ind = int(src_ind)
-            trg_ind = int(trg_ind)
+        # FAISS retrieval
+        x2y_sim, x2y_ind = index_y.search(x, knn_neighbors)
+        x2y_mean = x2y_sim.mean(axis=1)
 
-            if scores[i] < min_threshold:
-                break
+        # approximate reverse consistency (batch-local)
+        y2x_sim, y2x_ind = index_y.search(x, knn_neighbors)
+        y2x_mean = y2x_sim.mean(axis=1)
 
-            if src_ind not in seen_src and trg_ind not in seen_trg:
-                seen_src.add(src_ind)
-                seen_trg.add(trg_ind)
-                #fOut.write("{:.4f}\t{}\t{}\n".format(scores[i], source_sentences[src_ind].replace("\t", " "), target_sentences[trg_ind].replace("\t", " ")))
-                fOut.write("{}\t{}\t{:.4f}\n".format(source_sentences[src_ind].replace("\t", " "), target_sentences[trg_ind].replace("\t", " "),scores[i]))
+        # your original scoring logic
+        fwd_scores = score_candidates(
+            x, None,
+            x2y_ind,
+            x2y_mean,
+            y2x_mean,
+            margin
+        )
 
-                sentences_written += 1
+        for i in range(len(src_batch)):
 
-    print(f"{sentences_written} sentences aligned.\nAligned segments file saved.")
+            best_score = float(fwd_scores[i].max())
+
+            if best_score < min_threshold:
+                continue
+
+            trg_idx = int(x2y_ind[i][fwd_scores[i].argmax()])
+
+            heapq.heappush(heap, (
+                -best_score,
+                src_offset + i,
+                trg_idx
+            ))
+
+        src_offset += len(src_batch)
+
+        del x
+        
+    print("Final global selection")
+
+    seen_src = set()
+    seen_trg = set()
+
+    outfile = outdir / f"aligned-{source_file_code}-{target_file_code}.txt"
+
+    heapq.heapify(heap)
+
+    with open(outfile, "w", encoding="utf-8") as fOut:
+
+        while heap:
+
+            neg_score, src_id, trg_id = heapq.heappop(heap)
+            score = -neg_score
+
+            if src_id in seen_src or trg_id in seen_trg:
+                continue
+
+            seen_src.add(src_id)
+            seen_trg.add(trg_id)
+
+            src_text = linecache.getline(source_file, src_id + 1).strip()
+            trg_text = linecache.getline(target_store_path, trg_id + 1).strip()
+
+            fOut.write(
+                f"{src_text}\t{trg_text}\t{score:.4f}\n"
+            )
