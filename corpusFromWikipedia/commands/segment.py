@@ -220,7 +220,7 @@ def segment_corpus(args):
     force_segmenter = args.force_segmenter
     chunk = args.chunk
 
-    indir = args.indir # should be the corpora folder inside outputs
+    indir = args.indir # should be the pages folder
     indir = Path(indir)
     paramark=args.paramark
 
@@ -331,10 +331,10 @@ def segment_corpus(args):
                                     sortida.write(segment + "\n")
                                 else:
                                     sortida.write("\n".join(segments) + "\n")
-
+        corpus_folder = outdir.parent
         if not force_srx_lang:
-            sort_uniq_shuf(segments_folder, srxlang_code, outdir)
+            sort_uniq_shuf(segments_folder, srxlang_code, corpus_folder)
 
         else:
             srxlang_code = f'force-{srxlang_name}-{ending}'
-            sort_uniq_shuf(segments_folder, srxlang_code, outdir)
+            sort_uniq_shuf(segments_folder, srxlang_code, corpus_folder)
