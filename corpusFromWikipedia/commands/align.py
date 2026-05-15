@@ -211,17 +211,20 @@ def align_corpora(args):
     ### Encode source sentences
     source_sentences = list(source_sentences)
 
+    print("Encoding source sentences")
 
-    print("Encode source sentences")
-    source_embeddings = model.encode(source_sentences, show_progress_bar=True, convert_to_numpy=True)
-
+    # multiprocessing test
+    pool = model.start_multi_process_pool()
+    batch_size = 1024
+    chunk_size = 50000
+    source_embeddings = model.encode(source_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True)
 
     ### Encode target sentences
     target_sentences = list(target_sentences)
+    print("Encoding target sentences")
+    target_embeddings = model.encode(target_sentences,pool=pool, chunk_size=chunk_size, batch_size=batch_size, show_progress_bar=True, convert_to_numpy=True)
 
-    print("Encode target sentences")
-    target_embeddings = model.encode(target_sentences, show_progress_bar=True, convert_to_numpy=True)
-
+    model.stop_multi_process_pool(pool=pool)
 
     # Normalize embeddings
     x = source_embeddings
