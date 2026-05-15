@@ -1,5 +1,6 @@
 # align functions
 from ..utils.get_language import get_language
+import numpy as np
 
 def score(x, y, fwd_mean, bwd_mean, margin):
     return margin(x.dot(y), (fwd_mean + bwd_mean) / 2)
@@ -14,7 +15,7 @@ def score_candidates(x, y, candidate_inds, fwd_mean, bwd_mean, margin):
             scores[i, j] = score(x[i], y[k], fwd_mean[i], bwd_mean[k], margin)
     return scores
 
-def kNN(device, x, y, k, use_ann_search=False, ann_num_clusters=32768, ann_num_cluster_probe=3):
+def kNN(device, x, y, k, use_ann_search=False, ann_num_clusters=32768, ann_num_cluster_probe=3, gpus_num=1):
     import faiss
     import time
     start_time = time.time()
@@ -36,12 +37,12 @@ def kNN(device, x, y, k, use_ann_search=False, ann_num_clusters=32768, ann_num_c
         gpu_index.add(y)
         sim, ind = gpu_index.search(x, k)
     elif device == "gpu":
-        res = faiss.StandardGpuResources()
+        # res = faiss.StandardGpuResources()
         print("Perform exact search (GPU mode)")
         idx = faiss.IndexFlatIP(y.shape[1])
-        gpu_index = faiss.index_cpu_to_gpu(res, 0, idx)
-        #idx.add(y)
-        #sim, ind = idx.search(x, k)
+        # gpu_index = faiss.index_cpu_to_gpu(res, 0, idx)
+        gpu_index = faiss.index_cpu_to_all_gpus(idx, ngpu=gpus_num)
+
         gpu_index.add(y)
         sim, ind = gpu_index.search(x, k)
     elif device == "cpu":
@@ -78,7 +79,6 @@ def align_corpora(args):
     from sklearn.decomposition import PCA
     import torch
     from pathlib import Path
-    import numpy as np
 
     device = args.device
     device = device.lower()
@@ -132,6 +132,11 @@ def align_corpora(args):
     model_name = 'LaBSE'
     model = SentenceTransformer(model_name)
 
+    # only visible gpus (if they are limited by an external script)
+    gpus_num = torch.cuda.device_count()
+    target_devices = [f"cuda:{i}" for i in range(gpus_num)]
+    print(f"Visible GPUs: {target_devices}")
+ 
     # Only consider sentences that are between min_sent_len and max_sent_len characters long
     min_sent_len = 10
     max_sent_len = 200
@@ -214,30 +219,37 @@ def align_corpora(args):
     print("Encoding source sentences")
 
     # multiprocessing test
-    pool = model.start_multi_process_pool()
-    batch_size = 1024
+    pool = model.start_multi_process_pool(target_devices=target_devices)
+    safe_batch_size = 32
+    safe_chunk_size = 10000
+    batch_size = 512
     chunk_size = 50000
     source_embeddings = model.encode(source_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True)
+    source_embeddings = source_embeddings.astype(np.float16)
 
     ### Encode target sentences
     target_sentences = list(target_sentences)
     print("Encoding target sentences")
     target_embeddings = model.encode(target_sentences,pool=pool, chunk_size=chunk_size, batch_size=batch_size, show_progress_bar=True, convert_to_numpy=True)
+    target_embeddings = target_embeddings.astype(np.float16)
 
     model.stop_multi_process_pool(pool=pool)
 
     # Normalize embeddings
+    # Normalizing in place
+    source_embeddings /= np.linalg.norm(source_embeddings, axis=1, keepdims=True)
+    target_embeddings /= np.linalg.norm(target_embeddings, axis=1, keepdims=True)
     x = source_embeddings
-    x = x / np.linalg.norm(x, axis=1, keepdims=True)
+    # x = x / np.linalg.norm(x, axis=1, keepdims=True)
 
     y = target_embeddings
-    y = y / np.linalg.norm(y, axis=1, keepdims=True)
+    # y = y / np.linalg.norm(y, axis=1, keepdims=True
 
     # Perform kNN in both directions
-    x2y_sim, x2y_ind = kNN(device, x, y, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe)
+    x2y_sim, x2y_ind = kNN(device, x, y, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe, gpus_num=gpus_num)
     x2y_mean = x2y_sim.mean(axis=1)
 
-    y2x_sim, y2x_ind = kNN(device, y, x, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe)
+    y2x_sim, y2x_ind = kNN(device, y, x, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe, gpus_num=gpus_num)
     y2x_mean = y2x_sim.mean(axis=1)
 
     # Compute forward and backward scores
