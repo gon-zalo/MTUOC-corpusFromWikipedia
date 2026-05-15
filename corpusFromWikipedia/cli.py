@@ -59,7 +59,7 @@ def cli():
     segment_parser.set_defaults(func=segment_corpus)
 
 # ALIGN SUBPARSER
-    align_parser = subparsers.add_parser("align", help="Perform bitext mining and alignment between two corpora.", description="Bitext mine and align parallel sentences from two lists of monolingual sentences. The input files should be two text files of segmented text named: unique-segments and containing the language ISO code at the end, e.g.: 'unique-segments-en.txt. The input directory can be a folder where both corpora are located, e.g. corpus-ca-en/ if your aim is to create a parallel corpus, or two different folders (e.g. corpus-en/ corpus-ca/). The output is an aligned segments text file.")
+    align_parser = subparsers.add_parser("align", help="Perform bitext mining and alignment between two corpora.", description="Bitext mine and align parallel sentences from two lists of monolingual sentences. The input directory can be a folder where both corpora are located, e.g. corpus-ca-en/ if your aim is to create a parallel corpus, or two different folders (e.g. corpus-en/ corpus-ca/). The tool automatically looks for the unique segments files in both languages. The output is an aligned segments text file.")
     align_parser.add_argument("indir", help="Path to the folder that contains the unique segments files (e.g. corpus-en-ca/).")
     align_parser.add_argument("optional_indir", nargs='?', help="Use this argument too if your corpora are located in separate folders (e.g. corpus-en/ corpus-ca/)", default=None)
     align_parser.add_argument("-dev", "--device", choices=["gpu", "cpu"], default="gpu", dest="device", help="Device used (GPU or CPU). Default: GPU.", required=False)
