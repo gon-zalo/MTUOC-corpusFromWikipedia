@@ -65,6 +65,9 @@ def cli():
     align_parser.add_argument("-dev", "--device", choices=["gpu", "cpu"], default="gpu", dest="device", help="Device used (GPU or CPU). Default: GPU.", required=False)
     # align_parser.add_argument("--gpu-id", help="GPU id to use if --device gpu. Default: 0.")
     # align_parser.add_argument("--file-by-file", help="Align segments file by file, as opposed to in bulk" , default=True, action="store_true", required=False) # not implemented
+    # align_parser.add_argument("--mode", type=str, choices=["safe", "balanced", "fast"], default="balanced", help="Preset performance mode for computation of embeddings. It automatically controls batch and chunk sizes. If you want specific settings use the flags --batch-size and --chunk-size. Default: balanced.")
+    # align_parser.add_argument("--batch-size", type=int, help="")
+    # align_parser.add_argument("--chunk-size", type=int, help="")
     align_parser.add_argument("--outdir", help="Output directory in which to save the aligned segments files. If not specified, it will be saved in the same directory as the input file.", required=False)
     align_parser.set_defaults(func=align_corpora)
 
