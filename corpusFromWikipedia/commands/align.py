@@ -15,10 +15,45 @@ def score_candidates(x, y, candidate_inds, fwd_mean, bwd_mean, margin):
             scores[i, j] = score(x[i], y[k], fwd_mean[i], bwd_mean[k], margin)
     return scores
 
+def score_candidates_vectorized(x, y, candidate_inds, fwd_mean, bwd_mean):
+    import numpy as np
+    print("Calculating scores...")
+    
+    num_queries = x.shape[0]
+    k = candidate_inds.shape[1]
+    scores = np.zeros((num_queries, k), dtype=np.float32)
+    
+    # Process in chunks of 1M
+    chunk_size = 1000000 
+    
+    for start_idx in range(0, num_queries, chunk_size):
+        end_idx = min(start_idx + chunk_size, num_queries)
+        
+        # 1. Slice current chunk
+        batch_x = x[start_idx:end_idx].astype('float32') # (Chunk, D)
+        batch_inds = candidate_inds[start_idx:end_idx]   # (Chunk, K)
+        
+        # 2. Gather candidates (This is the memory-heavy part)
+        # We only take the y-vectors we actually need for this chunk
+        batch_y = y[batch_inds].astype('float32')        # (Chunk, K, D)
+        
+        # 3. Compute dot products across the D dimension
+        # Equivalent to row-wise x[i].dot(y[k])
+        dots = np.einsum('id,ikd->ik', batch_x, batch_y)
+        
+        # 4. Apply the margin formula
+        batch_fwd_mean = fwd_mean[start_idx:end_idx, np.newaxis]
+        batch_bwd_mean = bwd_mean[batch_inds]
+        
+        scores[start_idx:end_idx] = dots / ((batch_fwd_mean + batch_bwd_mean) / 2)
+        
+    return scores
+
 def kNN(device, x, y, k, use_ann_search=False, ann_num_clusters=32768, ann_num_cluster_probe=3, gpus_num=1):
     import faiss
     import time
     start_time = time.time()
+    print("Running kNN")
     
     if use_ann_search:
         # Mantinc la lògica GPU només per a la cerca aproximada (ANN)
@@ -36,15 +71,28 @@ def kNN(device, x, y, k, use_ann_search=False, ann_num_clusters=32768, ann_num_c
         gpu_index.train(y)
         gpu_index.add(y)
         sim, ind = gpu_index.search(x, k)
+        
     elif device == "gpu":
-        # res = faiss.StandardGpuResources()
-        print("Perform exact search (GPU mode)")
-        idx = faiss.IndexFlatIP(y.shape[1])
-        # gpu_index = faiss.index_cpu_to_gpu(res, 0, idx)
-        gpu_index = faiss.index_cpu_to_all_gpus(idx, ngpu=gpus_num)
+        print(f"Performing exact search (GPU mode). Number of GPUs: {gpus_num}")
+    
+        d = y.shape[1]
+        # 1. Create a CPU index
+        index_cpu = faiss.IndexFlatIP(d)
+        
+        # 2. Configure Sharding
+        co = faiss.GpuMultipleClonerOptions()
+        co.shard = True          # Split data across GPUs
+        co.useFloat16 = True     # Massive memory savings
+        
+        # 3. Move to specific GPUs (e.g., indices [0, 1])
+        gpu_index = faiss.index_cpu_to_all_gpus(index_cpu, co, ngpu=gpus_num)
 
-        gpu_index.add(y)
-        sim, ind = gpu_index.search(x, k)
+        # 4. Add data (FAISS handles the splitting)
+        # Ensure y is float32 before adding; FAISS GPU will convert to float16 internally
+        gpu_index.add(y.astype('float32'))
+        
+        # 5. Search
+        sim, ind = gpu_index.search(x.astype('float32'), k)
     elif device == "cpu":
         # MODIFICACIÓ: Forcem l'ús de la CPU per a la cerca exacta
         # Això evita l'error 'cublas failed' per falta de memòria VRAM
@@ -134,8 +182,8 @@ def align_corpora(args):
 
     # only visible gpus (if they are limited by an external script)
     gpus_num = torch.cuda.device_count()
-    target_devices = [f"cuda:{i}" for i in range(gpus_num)]
-    print(f"Visible GPUs: {target_devices}")
+    devices_num = [f"cuda:{i}" for i in range(gpus_num)]
+    print(f"Visible GPUs: {devices_num}")
  
     # Only consider sentences that are between min_sent_len and max_sent_len characters long
     min_sent_len = 10
@@ -192,7 +240,6 @@ def align_corpora(args):
         dense.linear.weight = torch.nn.Parameter(torch.tensor(pca.components_))
         model.add_module('dense', dense)
 
-
     print(f"Reading source ({source_lang_name}) file")
     source_sentences = set()
     with file_open(source_file) as fIn:
@@ -219,7 +266,7 @@ def align_corpora(args):
     print("Encoding source sentences")
 
     # multiprocessing test
-    pool = model.start_multi_process_pool(target_devices=target_devices)
+    pool = model.start_multi_process_pool(target_devices=devices_num)
     safe_batch_size = 32
     safe_chunk_size = 10000
     batch_size = 512
@@ -254,8 +301,8 @@ def align_corpora(args):
 
     # Compute forward and backward scores
     margin = lambda a, b: a / b
-    fwd_scores = score_candidates(x, y, x2y_ind, x2y_mean, y2x_mean, margin)
-    bwd_scores = score_candidates(y, x, y2x_ind, y2x_mean, x2y_mean, margin)
+    fwd_scores = score_candidates_vectorized(x, y, x2y_ind, x2y_mean, y2x_mean)
+    bwd_scores = score_candidates_vectorized(y, x, y2x_ind, y2x_mean, x2y_mean)
     fwd_best = x2y_ind[np.arange(x.shape[0]), fwd_scores.argmax(axis=1)]
     bwd_best = y2x_ind[np.arange(y.shape[0]), bwd_scores.argmax(axis=1)]
 
