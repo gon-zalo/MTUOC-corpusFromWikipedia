@@ -140,8 +140,7 @@ def align_corpora(args):
     co.shard = True
     co.useFloat16 = True
     
-    # 100k is the sweet spot for maximum GPU throughput without choking the scratch memory
-    search_chunk_size = 100000
+    search_chunk_size = 4096
 
     # --- PASS A: Source to Target (X -> Y) ---
     print("\n[FAISS PASS 1/2] Loading German vectors into GPU Index...", flush=True)
