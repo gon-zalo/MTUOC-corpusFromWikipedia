@@ -271,21 +271,23 @@ def align_corpora(args):
     safe_chunk_size = 10000
     batch_size = 512
     chunk_size = 50000
-    source_embeddings = model.encode(source_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True)
+    source_embeddings = model.encode(source_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
     source_embeddings = source_embeddings.astype(np.float16)
 
     ### Encode target sentences
     target_sentences = list(target_sentences)
     print("Encoding target sentences")
-    target_embeddings = model.encode(target_sentences,pool=pool, chunk_size=chunk_size, batch_size=batch_size, show_progress_bar=True, convert_to_numpy=True)
+    target_embeddings = model.encode(target_sentences,pool=pool, chunk_size=chunk_size, batch_size=batch_size, show_progress_bar=True, convert_to_numpy=True, normalize_embeddings=True)
     target_embeddings = target_embeddings.astype(np.float16)
 
     model.stop_multi_process_pool(pool=pool)
 
     # Normalize embeddings
     # Normalizing in place
-    source_embeddings /= np.linalg.norm(source_embeddings, axis=1, keepdims=True)
-    target_embeddings /= np.linalg.norm(target_embeddings, axis=1, keepdims=True)
+    # print("Normalizing source embeddings")
+    # source_embeddings /= np.linalg.norm(source_embeddings, axis=1, keepdims=True)
+    # print("Normalizing target embeddings")
+    # target_embeddings /= np.linalg.norm(target_embeddings, axis=1, keepdims=True)
     x = source_embeddings
     # x = x / np.linalg.norm(x, axis=1, keepdims=True)
 
