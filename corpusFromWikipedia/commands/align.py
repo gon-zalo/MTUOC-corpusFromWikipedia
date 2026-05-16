@@ -1,6 +1,7 @@
 # align functions
 from ..utils.get_language import get_language
 import numpy as np
+import gc
 
 def score(x, y, fwd_mean, bwd_mean, margin):
     return margin(x.dot(y), (fwd_mean + bwd_mean) / 2)
@@ -264,7 +265,6 @@ def align_corpora(args):
     source_sentences = list(source_sentences)
 
     print("Encoding source sentences")
-
     # multiprocessing test
     pool = model.start_multi_process_pool(target_devices=devices_num)
     safe_batch_size = 32
@@ -273,15 +273,25 @@ def align_corpora(args):
     chunk_size = 50000
     source_embeddings = model.encode(source_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
     source_embeddings = source_embeddings.astype(np.float16)
+    print("Source sentences encoded")
+    print("Saving source embeddings to disk to free up RAM...")
+    np.save("embeddings-de.npy", source_embeddings)
+    del source_embeddings  # Nuke it from RAM
+    gc.collect()           # Force Python to clean up the garbage
 
     ### Encode target sentences
     target_sentences = list(target_sentences)
     print("Encoding target sentences")
     target_embeddings = model.encode(target_sentences,pool=pool, chunk_size=chunk_size, batch_size=batch_size, show_progress_bar=True, convert_to_numpy=True, normalize_embeddings=True)
     target_embeddings = target_embeddings.astype(np.float16)
-
+    print("Target sentences encoded")
+    print("Saving target embeddings to disk...")
+    np.save("embeddings-en.npy", target_embeddings)
     model.stop_multi_process_pool(pool=pool)
 
+    print("Reloading German embeddings into RAM...")
+    source_embeddings = np.load("embeddings-de.npy")
+    
     # Normalize embeddings
     # Normalizing in place
     # print("Normalizing source embeddings")
