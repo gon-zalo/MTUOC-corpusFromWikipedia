@@ -2,6 +2,7 @@
 from ..utils.get_language import get_language
 import numpy as np
 import gc
+import sys
 
 def score(x, y, fwd_mean, bwd_mean, margin):
     return margin(x.dot(y), (fwd_mean + bwd_mean) / 2)
@@ -109,6 +110,46 @@ def kNN(device, x, y, k, use_ann_search=False, ann_num_clusters=32768, ann_num_c
     print("Done: {:.2f} sec".format(time.time()-start_time))
     return sim, ind
 
+def kNN_multiple_gpu(x, y, k, gpus_num):
+    import faiss
+    import numpy as np
+    
+    d = y.shape[1]
+    cpu_index = faiss.IndexFlatIP(d)
+    
+    co = faiss.GpuMultipleClonerOptions()
+    co.shard = True          
+    co.useFloat16 = True     
+    
+    gpu_index = faiss.index_cpu_to_all_gpus(cpu_index, co, ngpu=gpus_num)
+    
+    # 1. Add to FAISS in 5-million-row chunks to protect System RAM
+    print("Adding target vectors to GPUs in chunks...", flush=True)
+    add_chunk_size = 5000000
+    for start in range(0, y.shape[0], add_chunk_size):
+        end = min(start + add_chunk_size, y.shape[0])
+        # Convert only 15GB at a time to float32
+        chunk_f32 = y[start:end].astype('float32')
+        gpu_index.add(chunk_f32)
+        del chunk_f32 # Clear temporary RAM instantly
+    
+    # 2. Search FAISS in 5-million-row chunks to prevent another RAM spike
+    print("Searching in chunks...", flush=True)
+    sim = np.zeros((x.shape[0], k), dtype=np.float32)
+    ind = np.zeros((x.shape[0], k), dtype=np.int64)
+    
+    search_chunk_size = 5000000
+    for start in range(0, x.shape[0], search_chunk_size):
+        end = min(start + search_chunk_size, x.shape[0])
+        chunk_x_f32 = x[start:end].astype('float32')
+        
+        chunk_sim, chunk_ind = gpu_index.search(chunk_x_f32, k)
+        sim[start:end] = chunk_sim
+        ind[start:end] = chunk_ind
+        del chunk_x_f32
+    
+    return sim, ind
+
 def file_open(filepath):
     #Function to allowing opening files based on file extension
     import gzip
@@ -131,6 +172,7 @@ def align_corpora(args):
 
     device = args.device
     device = device.lower()
+    load_embeddings = args.load_embeddings
 
     if device == 'gpu' and not torch.cuda.is_available():
         print("GPU requested but not found. Using CPU.")
@@ -241,57 +283,70 @@ def align_corpora(args):
         dense.linear.weight = torch.nn.Parameter(torch.tensor(pca.components_))
         model.add_module('dense', dense)
 
-    print(f"Reading source ({source_lang_name}) file")
-    source_sentences = set()
-    with file_open(source_file) as fIn:
-        for line in tqdm.tqdm(fIn):
-            line = line.strip()
-            if len(line) >= min_sent_len and len(line) <= max_sent_len:
-                source_sentences.add(line)
+    if not load_embeddings:
+        print(f"Reading source ({source_lang_name}) file")
+        source_sentences = set()
+        with file_open(source_file) as fIn:
+            for line in tqdm.tqdm(fIn):
+                line = line.strip()
+                if len(line) >= min_sent_len and len(line) <= max_sent_len:
+                    source_sentences.add(line)
 
-    print(f"Reading target ({target_lang_name}) file")
-    target_sentences = set()
-    with file_open(target_file) as fIn:
-        for line in tqdm.tqdm(fIn):
-            line = line.strip()
-            if len(line) >= min_sent_len and len(line) <= max_sent_len:
-                target_sentences.add(line)
+        print(f"Reading target ({target_lang_name}) file")
+        target_sentences = set()
+        with file_open(target_file) as fIn:
+            for line in tqdm.tqdm(fIn):
+                line = line.strip()
+                if len(line) >= min_sent_len and len(line) <= max_sent_len:
+                    target_sentences.add(line)
 
-    print("Source Sentences:", len(source_sentences))
-    print("Target Sentences:", len(target_sentences))
+        print("Source Sentences:", len(source_sentences))
+        print("Target Sentences:", len(target_sentences))
 
 
-    ### Encode source sentences
-    source_sentences = list(source_sentences)
+        ### Encode source sentences
+        source_sentences = list(source_sentences)
 
-    print("Encoding source sentences")
-    # multiprocessing test
-    pool = model.start_multi_process_pool(target_devices=devices_num)
-    safe_batch_size = 32
-    safe_chunk_size = 10000
-    batch_size = 512
-    chunk_size = 50000
-    source_embeddings = model.encode(source_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
-    source_embeddings = source_embeddings.astype(np.float16)
-    print("Source sentences encoded")
-    print("Saving source embeddings to disk to free up RAM...")
-    np.save("embeddings-de.npy", source_embeddings)
-    del source_embeddings  # Nuke it from RAM
-    gc.collect()           # Force Python to clean up the garbage
+        print("Encoding source sentences")
+        # multiprocessing test
+        pool = model.start_multi_process_pool(target_devices=devices_num)
+        safe_batch_size = 32
+        safe_chunk_size = 10000
+        batch_size = 512
+        chunk_size = 50000
+        source_embeddings = model.encode(source_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
+        source_embeddings = source_embeddings.astype(np.float16)
+        print("Source sentences encoded")
+        print("Saving source embeddings to disk to free up RAM...")
+        np.save("embeddings-de.npy", source_embeddings)
+        del source_embeddings  # Nuke it from RAM
+        gc.collect()           # Force Python to clean up the garbage
 
-    ### Encode target sentences
-    target_sentences = list(target_sentences)
-    print("Encoding target sentences")
-    target_embeddings = model.encode(target_sentences,pool=pool, chunk_size=chunk_size, batch_size=batch_size, show_progress_bar=True, convert_to_numpy=True, normalize_embeddings=True)
-    target_embeddings = target_embeddings.astype(np.float16)
-    print("Target sentences encoded")
-    print("Saving target embeddings to disk...")
-    np.save("embeddings-en.npy", target_embeddings)
-    model.stop_multi_process_pool(pool=pool)
+        ### Encode target sentences
+        target_sentences = list(target_sentences)
+        print("Encoding target sentences")
+        target_embeddings = model.encode(target_sentences,pool=pool, chunk_size=chunk_size, batch_size=batch_size, show_progress_bar=True, convert_to_numpy=True, normalize_embeddings=True)
+        target_embeddings = target_embeddings.astype(np.float16)
+        print("Target sentences encoded")
+        print("Saving target embeddings to disk...")
+        np.save("embeddings-en.npy", target_embeddings)
+        model.stop_multi_process_pool(pool=pool)
 
-    print("Reloading German embeddings into RAM...")
-    source_embeddings = np.load("embeddings-de.npy")
+        print("Reloading German embeddings into RAM...")
+        source_embeddings = np.load("embeddings-de.npy")
     
+    else:
+        source_embeddings_path = indir / "embeddings-de.npy"
+        target_embeddings_path = indir / "embeddings-en.npy"
+        # Check if checkpoints exist from the previous run
+        if source_embeddings_path.exists() and target_embeddings_path.exists():
+            print("Found existing embedding files! Loading...", flush=True)
+            source_embeddings = np.load(source_embeddings_path)
+            target_embeddings = np.load(target_embeddings_path)
+        else:
+            print("Error: Embedding files not found.")
+            sys.exit()
+
     # Normalize embeddings
     # Normalizing in place
     # print("Normalizing source embeddings")
@@ -305,10 +360,12 @@ def align_corpora(args):
     # y = y / np.linalg.norm(y, axis=1, keepdims=True
 
     # Perform kNN in both directions
-    x2y_sim, x2y_ind = kNN(device, x, y, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe, gpus_num=gpus_num)
+    # x2y_sim, x2y_ind = kNN(device, x, y, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe, gpus_num=gpus_num)
+    x2y_sim, x2y_ind = kNN_multiple_gpu(x, y, knn_neighbors, gpus_num=gpus_num)
     x2y_mean = x2y_sim.mean(axis=1)
 
-    y2x_sim, y2x_ind = kNN(device, y, x, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe, gpus_num=gpus_num)
+    # y2x_sim, y2x_ind = kNN(device, y, x, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe, gpus_num=gpus_num)
+    y2x_sim, y2x_ind = kNN_multiple_gpu(x, y, knn_neighbors, gpus_num=gpus_num)
     y2x_mean = y2x_sim.mean(axis=1)
 
     # Compute forward and backward scores
