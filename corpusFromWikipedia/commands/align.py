@@ -127,10 +127,10 @@ def align_corpora(args):
     # -----------------------------------------------------------------
     # STEP 1: CHECKPOINT ENCODING LOGIC
     # -----------------------------------------------------------------
-    src_cache = "embeddings-de.npy"
-    trg_cache = "embeddings-en.npy"
+    src_cache = indir / "embeddings-de.npy"
+    trg_cache = indir / "embeddings-en.npy"
 
-    if os.path.exists(src_cache) and os.path.exists(trg_cache):
+    if src_cache.exists() and trg_cache.exists():
         print("\n[FOUND] Existing embedding checkpoints! Skipping encoding phase.", flush=True)
 
     # -----------------------------------------------------------------
