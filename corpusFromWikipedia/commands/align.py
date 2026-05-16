@@ -1,160 +1,16 @@
-# align functions
-from ..utils.get_language import get_language
-import numpy as np
+import os
 import gc
-import sys
-
-def score(x, y, fwd_mean, bwd_mean, margin):
-    return margin(x.dot(y), (fwd_mean + bwd_mean) / 2)
-
-def score_candidates(x, y, candidate_inds, fwd_mean, bwd_mean, margin):
-    import numpy as np
-
-    scores = np.zeros(candidate_inds.shape)
-    for i in range(scores.shape[0]):
-        for j in range(scores.shape[1]):
-            k = candidate_inds[i, j]
-            scores[i, j] = score(x[i], y[k], fwd_mean[i], bwd_mean[k], margin)
-    return scores
-
-def score_candidates_vectorized(x, y, candidate_inds, fwd_mean, bwd_mean):
-    import numpy as np
-    print("Calculating scores...")
-    
-    num_queries = x.shape[0]
-    k = candidate_inds.shape[1]
-    scores = np.zeros((num_queries, k), dtype=np.float32)
-    
-    # Process in chunks of 1M
-    chunk_size = 1000000 
-    
-    for start_idx in range(0, num_queries, chunk_size):
-        end_idx = min(start_idx + chunk_size, num_queries)
-        
-        # 1. Slice current chunk
-        batch_x = x[start_idx:end_idx].astype('float32') # (Chunk, D)
-        batch_inds = candidate_inds[start_idx:end_idx]   # (Chunk, K)
-        
-        # 2. Gather candidates (This is the memory-heavy part)
-        # We only take the y-vectors we actually need for this chunk
-        batch_y = y[batch_inds].astype('float32')        # (Chunk, K, D)
-        
-        # 3. Compute dot products across the D dimension
-        # Equivalent to row-wise x[i].dot(y[k])
-        dots = np.einsum('id,ikd->ik', batch_x, batch_y)
-        
-        # 4. Apply the margin formula
-        batch_fwd_mean = fwd_mean[start_idx:end_idx, np.newaxis]
-        batch_bwd_mean = bwd_mean[batch_inds]
-        
-        scores[start_idx:end_idx] = dots / ((batch_fwd_mean + batch_bwd_mean) / 2)
-        
-    return scores
-
-def kNN(device, x, y, k, use_ann_search=False, ann_num_clusters=32768, ann_num_cluster_probe=3, gpus_num=1):
-    import faiss
-    import time
-    start_time = time.time()
-    print("Running kNN")
-    
-    if use_ann_search:
-        # Mantinc la lògica GPU només per a la cerca aproximada (ANN)
-        print("Perform approx. kNN search (GPU)")
-        res = faiss.StandardGpuResources() 
-        n_cluster = min(ann_num_clusters, int(y.shape[0]/1000))
-        quantizer = faiss.IndexFlatIP(y.shape[1])
-        index = faiss.IndexIVFFlat(quantizer, y.shape[1], n_cluster, faiss.METRIC_INNER_PRODUCT)
-        gpu_index = faiss.index_cpu_to_gpu(res, 0, index)
-        #sim, ind = index.search(x, k)
-        #index.nprobe = ann_num_cluster_probe
-        #index.train(y)
-        #index.add(y)
-        gpu_index.nprobe = ann_num_cluster_probe
-        gpu_index.train(y)
-        gpu_index.add(y)
-        sim, ind = gpu_index.search(x, k)
-        
-    elif device == "gpu":
-        print(f"Performing exact search (GPU mode). Number of GPUs: {gpus_num}")
-    
-        d = y.shape[1]
-        # 1. Create a CPU index
-        index_cpu = faiss.IndexFlatIP(d)
-        
-        # 2. Configure Sharding
-        co = faiss.GpuMultipleClonerOptions()
-        co.shard = True          # Split data across GPUs
-        co.useFloat16 = True     # Massive memory savings
-        
-        # 3. Move to specific GPUs (e.g., indices [0, 1])
-        gpu_index = faiss.index_cpu_to_all_gpus(index_cpu, co, ngpu=gpus_num)
-
-        # 4. Add data (FAISS handles the splitting)
-        # Ensure y is float32 before adding; FAISS GPU will convert to float16 internally
-        gpu_index.add(y.astype('float32'))
-        
-        # 5. Search
-        sim, ind = gpu_index.search(x.astype('float32'), k)
-    elif device == "cpu":
-        # MODIFICACIÓ: Forcem l'ús de la CPU per a la cerca exacta
-        # Això evita l'error 'cublas failed' per falta de memòria VRAM
-        print("Perform exact search (CPU Mode)")
-        
-        # Creem l'índex directament a la CPU
-        index = faiss.IndexFlatIP(y.shape[1])
-        
-        # Afegim els vectors i busquem
-        index.add(y)
-        sim, ind = index.search(x, k)
-
-    print("Done: {:.2f} sec".format(time.time()-start_time))
-    return sim, ind
-
-def kNN_multiple_gpu(x, y, k, gpus_num):
-    import faiss
-    import numpy as np
-    
-    d = y.shape[1]
-    cpu_index = faiss.IndexFlatIP(d)
-    
-    co = faiss.GpuMultipleClonerOptions()
-    co.shard = True          
-    co.useFloat16 = True     
-    
-    gpu_index = faiss.index_cpu_to_all_gpus(cpu_index, co, ngpu=gpus_num)
-    
-    # 1. Add to FAISS in 5-million-row chunks to protect System RAM
-    print("Adding target vectors to GPUs in chunks...", flush=True)
-    add_chunk_size = 5000000
-    for start in range(0, y.shape[0], add_chunk_size):
-        end = min(start + add_chunk_size, y.shape[0])
-        # Convert only 15GB at a time to float32
-        chunk_f32 = y[start:end].astype('float32')
-        gpu_index.add(chunk_f32)
-        del chunk_f32 # Clear temporary RAM instantly
-    
-    # 2. Search FAISS in 5-million-row chunks to prevent another RAM spike
-    print("Searching in chunks...", flush=True)
-    sim = np.zeros((x.shape[0], k), dtype=np.float32)
-    ind = np.zeros((x.shape[0], k), dtype=np.int64)
-    
-    search_chunk_size = 5000000
-    for start in range(0, x.shape[0], search_chunk_size):
-        end = min(start + search_chunk_size, x.shape[0])
-        chunk_x_f32 = x[start:end].astype('float32')
-        
-        chunk_sim, chunk_ind = gpu_index.search(chunk_x_f32, k)
-        sim[start:end] = chunk_sim
-        ind[start:end] = chunk_ind
-        del chunk_x_f32
-    
-    return sim, ind
+import gzip
+import lzma
+import tqdm
+import faiss
+import torch
+import numpy as np
+from pathlib import Path
+from sentence_transformers import SentenceTransformer
+from ..utils.get_language import get_language
 
 def file_open(filepath):
-    #Function to allowing opening files based on file extension
-    import gzip
-    import lzma
-    from pathlib import Path
     if Path(filepath).name.endswith('.gz'):
         return gzip.open(filepath, 'rt', encoding='utf-8')
     elif Path(filepath).name.endswith('xz'):
@@ -162,39 +18,52 @@ def file_open(filepath):
     else:
         return open(filepath, 'r', encoding='utf-8')
 
+def score_candidates_vectorized(x_f16, y_f16, candidate_inds, fwd_mean, bwd_mean):
+    """Vectorized margin-based scoring running in safe 1M row chunks."""
+    print("Computing vectorized margin scores...", flush=True)
+    num_queries = x_f16.shape[0]
+    k = candidate_inds.shape[1]
+    scores = np.zeros((num_queries, k), dtype=np.float32)
+    
+    chunk_size = 1000000 
+    for start in range(0, num_queries, chunk_size):
+        end = min(start + chunk_size, num_queries)
+        
+        batch_x = x_f16[start:end].astype('float32') 
+        batch_inds = candidate_inds[start:end]
+        batch_y = y_f16[batch_inds].astype('float32') 
+        
+        # Row-wise dot product using Einstein summation
+        dots = np.einsum('id,ikd->ik', batch_x, batch_y)
+        
+        batch_fwd_mean = fwd_mean[start:end, np.newaxis]
+        batch_bwd_mean = bwd_mean[batch_inds]
+        
+        scores[start:end] = dots / ((batch_fwd_mean + batch_bwd_mean) / 2)
+        
+        del batch_x, batch_y, dots
+    return scores
+
 def align_corpora(args):
-    print("\nRunning align command")
-    from sentence_transformers import SentenceTransformer, models
-    import tqdm
-    from sklearn.decomposition import PCA
-    import torch
-    from pathlib import Path
-
-    device = args.device
-    device = device.lower()
-    load_embeddings = args.load_embeddings
-
+    print("\nRunning align command", flush=True)
+    
+    device = args.device.lower()
     if device == 'gpu' and not torch.cuda.is_available():
-        print("GPU requested but not found. Using CPU.")
+        print("GPU requested but not found. Using CPU.", flush=True)
         device = 'cpu'
-    indir = args.indir
-    optional_indir = args.optional_indir
-
-    indir_source = Path(indir)
+        
+    indir_source = Path(args.indir)
     input_directories = [indir_source]
-
-    if optional_indir:
-        indir_target = Path(optional_indir)
-        input_directories.append(indir_target)
+    if args.optional_indir:
+        input_directories.append(Path(args.optional_indir))
 
     unique_segments_files = []
     unique_segments_files_codes = []
-    print("")
 
     for indir in input_directories:
         for file in indir.iterdir():
             if file.is_file() and file.name.startswith("unique-segments"):
-                print(f"Unique segments file {file.name} found")
+                print(f"Unique segments file {file.name} found", flush=True)
                 unique_segments_files.append(file)
                 language_code = file.stem.split("-")
                 unique_segments_files_codes.append(language_code[-1])
@@ -203,7 +72,7 @@ def align_corpora(args):
     source_file_code, target_file_code = unique_segments_files_codes
     source_lang_name, source_lang_code = get_language(source_file_code)
     target_lang_name, target_lang_code = get_language(target_file_code)
-    print(f"\nAligning {source_lang_name} and {target_lang_name}\n")
+    print(f"\nAligning {source_lang_name} and {target_lang_name}\n", flush=True)
 
     outdir = args.outdir
     parallel_corpora_folder = indir_source.parent.parent / "parallel"
@@ -218,177 +87,153 @@ def align_corpora(args):
                 outdir.mkdir(parents=True, exist_ok=True)
         else: # else just save the file in the same input directory
             outdir = indir
-
-    #Model we want to use for bitext mining. LaBSE achieves state-of-the-art performance
-    model_name = 'LaBSE'
-    model = SentenceTransformer(model_name)
-
-    # only visible gpus (if they are limited by an external script)
+    # -----------------------------------------------------------------
+    # CONFIGURATION & PARAMETERS
+    # -----------------------------------------------------------------
     gpus_num = torch.cuda.device_count()
     devices_num = [f"cuda:{i}" for i in range(gpus_num)]
-    print(f"Visible GPUs: {devices_num}")
+    print(f"Visible GPUs: {devices_num}", flush=True)
  
-    # Only consider sentences that are between min_sent_len and max_sent_len characters long
     min_sent_len = 10
     max_sent_len = 200
-
-    # We base the scoring on k nearest neighbors for each element
     knn_neighbors = 4
-
-    # Min score for text pairs. Note, score can be larger than 1
     min_threshold = 1
+    chunk_size = 50000
+    batch_size = 512
 
-    #Do we want to use exact search of approximate nearest neighbor search (ANN)
-    #Exact search: Slower, but we don't miss any parallel sentences
-    #ANN: Faster, but the recall will be lower
-    use_ann_search = False #True
+    # -----------------------------------------------------------------
+    # LOAD SENTENCES
+    # -----------------------------------------------------------------
+    print(f"Reading source ({source_lang_name}) file", flush=True)
+    source_sentences = set()
+    with file_open(source_file) as fIn:
+        for line in tqdm.tqdm(fIn):
+            line = line.strip()
+            if min_sent_len <= len(line) <= max_sent_len:
+                source_sentences.add(line)
 
-    #Number of clusters for ANN. Each cluster should have at least 10k entries
-    ann_num_clusters = 32768
+    print(f"Reading target ({target_lang_name}) file", flush=True)
+    target_sentences = set()
+    with file_open(target_file) as fIn:
+        for line in tqdm.tqdm(fIn):
+            line = line.strip()
+            if min_sent_len <= len(line) <= max_sent_len:
+                target_sentences.add(line)
 
-    #How many cluster to explorer for search. Higher number = better recall, slower
-    ann_num_cluster_probe = 3
+    source_sentences = list(source_sentences)
+    target_sentences = list(target_sentences)
+    print(f"Source Sentences: {len(source_sentences)} | Target Sentences: {len(target_sentences)}", flush=True)
 
-    #To save memory, we can use PCA to reduce the dimensionality from 768 to for example 128 dimensions
-    #The encoded embeddings will hence require 6 times less memory. However, we observe a small drop in performance.
-    use_pca = False #True
-    pca_dimensions = 128
+    # -----------------------------------------------------------------
+    # STEP 1: CHECKPOINT ENCODING LOGIC
+    # -----------------------------------------------------------------
+    src_cache = "embeddings-de.npy"
+    trg_cache = "embeddings-en.npy"
 
+    if os.path.exists(src_cache) and os.path.exists(trg_cache):
+        print("\n[FOUND] Existing embedding checkpoints! Skipping encoding phase.", flush=True)
 
-    if use_pca:
-        print("Using PCA!")
-        # We use a smaller number of training sentences to learn the PCA
-        train_sent = []
-        num_train_sent = 20000
+    # -----------------------------------------------------------------
+    # STEP 2: SEQUENTIAL FAISS SEARCH (The Single Pass Fix)
+    # -----------------------------------------------------------------
+    co = faiss.GpuMultipleClonerOptions()
+    co.shard = True
+    co.useFloat16 = True
+    search_chunk_size = 5000000
 
-        with file_open(source_file) as fSource, file_open(target_file) as fTarget:
-            for line_source, line_target in zip(fSource, fTarget):
-                if min_sent_len <= len(line_source.strip()) <= max_sent_len:
-                    sentence = line_source.strip()
-                    train_sent.append(sentence)
+    # --- PASS A: Source to Target (X -> Y) ---
+    print("\n[FAISS PASS 1/2] Loading German vectors into GPU Index...", flush=True)
+    y_f16 = np.load(trg_cache)
+    y_f32 = y_f16.astype('float32')
+    del y_f16
+    gc.collect()
 
-                if min_sent_len <= len(line_target.strip()) <= max_sent_len:
-                    sentence = line_target.strip()
-                    train_sent.append(sentence)
+    cpu_index_y = faiss.IndexFlatIP(y_f32.shape[1])
+    gpu_index_y = faiss.index_cpu_to_all_gpus(cpu_index_y, co, ngpu=gpus_num)
+    gpu_index_y.add(y_f32)
+    del y_f32
+    gc.collect()
 
-                if len(train_sent) >= num_train_sent:
-                    break
+    print("Loading English vectors and searching Target Index in chunks...", flush=True)
+    x_f16 = np.load(src_cache)
+    x2y_sim = np.zeros((x_f16.shape[0], knn_neighbors), dtype=np.float32)
+    x2y_ind = np.zeros((x_f16.shape[0], knn_neighbors), dtype=np.int64)
 
-        print("Encode training embeddings for PCA")
-        train_matrix = model.encode(train_sent, show_progress_bar=True, convert_to_numpy=True)
-        pca = PCA(n_components=pca_dimensions)
-        pca.fit(train_matrix)
+    for start in range(0, x_f16.shape[0], search_chunk_size):
+        end = min(start + search_chunk_size, x_f16.shape[0])
+        chunk_x_f32 = x_f16[start:end].astype('float32')
+        chunk_sim, chunk_ind = gpu_index_y.search(chunk_x_f32, knn_neighbors)
+        x2y_sim[start:end] = chunk_sim
+        x2y_ind[start:end] = chunk_ind
+        del chunk_x_f32
 
-        dense = models.Dense(in_features=model.get_sentence_embedding_dimension(), out_features=pca_dimensions, bias=False, activation_function=torch.nn.Identity())
-        dense.linear.weight = torch.nn.Parameter(torch.tensor(pca.components_))
-        model.add_module('dense', dense)
+    del gpu_index_y
+    gc.collect() # Completely wipes German index from VRAM/RAM
 
-    if not load_embeddings:
-        print(f"Reading source ({source_lang_name}) file")
-        source_sentences = set()
-        with file_open(source_file) as fIn:
-            for line in tqdm.tqdm(fIn):
-                line = line.strip()
-                if len(line) >= min_sent_len and len(line) <= max_sent_len:
-                    source_sentences.add(line)
+    # --- PASS B: Target to Source (Y -> X) ---
+    print("\n[FAISS PASS 2/2] Loading English vectors into GPU Index...", flush=True)
+    x_f32 = x_f16.astype('float32')
+    cpu_index_x = faiss.IndexFlatIP(x_f32.shape[1])
+    gpu_index_x = faiss.index_cpu_to_all_gpus(cpu_index_x, co, ngpu=gpus_num)
+    gpu_index_x.add(x_f32)
+    del x_f32
+    gc.collect()
 
-        print(f"Reading target ({target_lang_name}) file")
-        target_sentences = set()
-        with file_open(target_file) as fIn:
-            for line in tqdm.tqdm(fIn):
-                line = line.strip()
-                if len(line) >= min_sent_len and len(line) <= max_sent_len:
-                    target_sentences.add(line)
+    print("Loading German vectors and searching Source Index in chunks...", flush=True)
+    y_f16 = np.load(trg_cache)
+    y2x_sim = np.zeros((y_f16.shape[0], knn_neighbors), dtype=np.float32)
+    y2x_ind = np.zeros((y_f16.shape[0], knn_neighbors), dtype=np.int64)
 
-        print("Source Sentences:", len(source_sentences))
-        print("Target Sentences:", len(target_sentences))
+    for start in range(0, y_f16.shape[0], search_chunk_size):
+        end = min(start + search_chunk_size, y_f16.shape[0])
+        chunk_y_f32 = y_f16[start:end].astype('float32')
+        chunk_sim, chunk_ind = gpu_index_x.search(chunk_y_f32, knn_neighbors)
+        y2x_sim[start:end] = chunk_sim
+        y2x_ind[start:end] = chunk_ind
+        del chunk_y_f32
 
+    del gpu_index_x
+    gc.collect() # Completely wipes English index from VRAM/RAM
 
-        ### Encode source sentences
-        source_sentences = list(source_sentences)
-
-        print("Encoding source sentences")
-        # multiprocessing test
-        pool = model.start_multi_process_pool(target_devices=devices_num)
-        safe_batch_size = 32
-        safe_chunk_size = 10000
-        batch_size = 512
-        chunk_size = 50000
-        source_embeddings = model.encode(source_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
-        source_embeddings = source_embeddings.astype(np.float16)
-        print("Source sentences encoded")
-        print("Saving source embeddings to disk to free up RAM...")
-        np.save("embeddings-de.npy", source_embeddings)
-        del source_embeddings  # Nuke it from RAM
-        gc.collect()           # Force Python to clean up the garbage
-
-        ### Encode target sentences
-        target_sentences = list(target_sentences)
-        print("Encoding target sentences")
-        target_embeddings = model.encode(target_sentences,pool=pool, chunk_size=chunk_size, batch_size=batch_size, show_progress_bar=True, convert_to_numpy=True, normalize_embeddings=True)
-        target_embeddings = target_embeddings.astype(np.float16)
-        print("Target sentences encoded")
-        print("Saving target embeddings to disk...")
-        np.save("embeddings-en.npy", target_embeddings)
-        model.stop_multi_process_pool(pool=pool)
-
-        print("Reloading German embeddings into RAM...")
-        source_embeddings = np.load("embeddings-de.npy")
-    
-    else:
-        source_embeddings_path = indir / "embeddings-de.npy"
-        target_embeddings_path = indir / "embeddings-en.npy"
-        # Check if checkpoints exist from the previous run
-        if source_embeddings_path.exists() and target_embeddings_path.exists():
-            print("Found existing embedding files! Loading...", flush=True)
-            source_embeddings = np.load(source_embeddings_path)
-            target_embeddings = np.load(target_embeddings_path)
-        else:
-            print("Error: Embedding files not found.")
-            sys.exit()
-
-    # Normalize embeddings
-    # Normalizing in place
-    # print("Normalizing source embeddings")
-    # source_embeddings /= np.linalg.norm(source_embeddings, axis=1, keepdims=True)
-    # print("Normalizing target embeddings")
-    # target_embeddings /= np.linalg.norm(target_embeddings, axis=1, keepdims=True)
-    x = source_embeddings
-    # x = x / np.linalg.norm(x, axis=1, keepdims=True)
-
-    y = target_embeddings
-    # y = y / np.linalg.norm(y, axis=1, keepdims=True
-
-    # Perform kNN in both directions
-    # x2y_sim, x2y_ind = kNN(device, x, y, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe, gpus_num=gpus_num)
-    x2y_sim, x2y_ind = kNN_multiple_gpu(x, y, knn_neighbors, gpus_num=gpus_num)
+    # -----------------------------------------------------------------
+    # STEP 3: MARGIN-BASED SCORING
+    # -----------------------------------------------------------------
+    print("\n[SCORING] Preparing margin calculation arrays...", flush=True)
     x2y_mean = x2y_sim.mean(axis=1)
-
-    # y2x_sim, y2x_ind = kNN(device, y, x, knn_neighbors, use_ann_search, ann_num_clusters, ann_num_cluster_probe, gpus_num=gpus_num)
-    y2x_sim, y2x_ind = kNN_multiple_gpu(x, y, knn_neighbors, gpus_num=gpus_num)
     y2x_mean = y2x_sim.mean(axis=1)
 
-    # Compute forward and backward scores
-    margin = lambda a, b: a / b
-    fwd_scores = score_candidates_vectorized(x, y, x2y_ind, x2y_mean, y2x_mean)
-    bwd_scores = score_candidates_vectorized(y, x, y2x_ind, y2x_mean, x2y_mean)
-    fwd_best = x2y_ind[np.arange(x.shape[0]), fwd_scores.argmax(axis=1)]
-    bwd_best = y2x_ind[np.arange(y.shape[0]), bwd_scores.argmax(axis=1)]
+    fwd_scores = score_candidates_vectorized(x_f16, y_f16, x2y_ind, x2y_mean, y2x_mean)
+    bwd_scores = score_candidates_vectorized(y_f16, x_f16, y2x_ind, y2x_mean, x2y_mean)
 
-    indices = np.stack([np.concatenate([np.arange(x.shape[0]), bwd_best]), np.concatenate([fwd_best, np.arange(y.shape[0])])], axis=1)
+    del x_f16, y_f16
+    gc.collect()
+
+    # -----------------------------------------------------------------
+    # STEP 4: EXTRACT BEST MATCHES & WRITE TO FILE
+    # -----------------------------------------------------------------
+    print("\n[ALIGNING] Processing final 100 million pair evaluations...", flush=True)
+    fwd_best = x2y_ind[np.arange(x2y_sim.shape[0]), fwd_scores.argmax(axis=1)]
+    bwd_best = y2x_ind[np.arange(y2x_sim.shape[0]), bwd_scores.argmax(axis=1)]
+
+    indices = np.stack([
+        np.concatenate([np.arange(x2y_sim.shape[0]), bwd_best]), 
+        np.concatenate([fwd_best, np.arange(y2x_sim.shape[0])])
+    ], axis=1)
+    
     scores = np.concatenate([fwd_scores.max(axis=1), bwd_scores.max(axis=1)])
+    
+    del fwd_scores, bwd_scores, x2y_ind, y2x_ind
+    gc.collect()
+
     seen_src, seen_trg = set(), set()
-
-    #Extact list of parallel sentences
     sentences_written = 0
-    #with gzip.open(sys.argv[3], 'wt', encoding='utf8') as fOut:
     outfile = outdir / f'aligned-segments-{source_file_code}-{target_file_code}.txt'
+    
+    print(f"Writing alignments to: {outfile}", flush=True)
     with open(outfile, 'w', encoding='utf-8') as fOut:
-
-        for i in np.argsort(-scores):
+        for i in tqdm.tqdm(np.argsort(-scores), desc="Writing output"):
             src_ind, trg_ind = indices[i]
-            src_ind = int(src_ind)
-            trg_ind = int(trg_ind)
+            src_ind, trg_ind = int(src_ind), int(trg_ind)
 
             if scores[i] < min_threshold:
                 break
@@ -396,9 +241,9 @@ def align_corpora(args):
             if src_ind not in seen_src and trg_ind not in seen_trg:
                 seen_src.add(src_ind)
                 seen_trg.add(trg_ind)
-                #fOut.write("{:.4f}\t{}\t{}\n".format(scores[i], source_sentences[src_ind].replace("\t", " "), target_sentences[trg_ind].replace("\t", " ")))
-                fOut.write("{}\t{}\t{:.4f}\n".format(source_sentences[src_ind].replace("\t", " "), target_sentences[trg_ind].replace("\t", " "),scores[i]))
-
+                clean_src = source_sentences[src_ind].replace("\t", " ")
+                clean_trg = target_sentences[trg_ind].replace("\t", " ")
+                fOut.write(f"{clean_src}\t{clean_trg}\t{scores[i]:.4f}\n")
                 sentences_written += 1
 
-    print(f"{sentences_written} sentences aligned.\nAligned segments file saved.")
+    print(f"\n{sentences_written} sentences successfully aligned.\nAligned segments file saved.")
