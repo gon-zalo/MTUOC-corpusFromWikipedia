@@ -139,7 +139,9 @@ def align_corpora(args):
     co = faiss.GpuMultipleClonerOptions()
     co.shard = True
     co.useFloat16 = True
-    search_chunk_size = 5000000
+    
+    # 100k is the sweet spot for maximum GPU throughput without choking the scratch memory
+    search_chunk_size = 100000
 
     # --- PASS A: Source to Target (X -> Y) ---
     print("\n[FAISS PASS 1/2] Loading German vectors into GPU Index...", flush=True)
@@ -154,12 +156,13 @@ def align_corpora(args):
     del y_f32
     gc.collect()
 
-    print("Loading English vectors and searching Target Index in chunks...", flush=True)
+    print("Searching Target Index in optimized chunks...", flush=True)
     x_f16 = np.load(src_cache)
     x2y_sim = np.zeros((x_f16.shape[0], knn_neighbors), dtype=np.float32)
     x2y_ind = np.zeros((x_f16.shape[0], knn_neighbors), dtype=np.int64)
 
-    for start in range(0, x_f16.shape[0], search_chunk_size):
+    # Adding a progress bar here so you can literally watch the GPU fly through the batches
+    for start in tqdm.tqdm(range(0, x_f16.shape[0], search_chunk_size), desc="Target Search Progress"):
         end = min(start + search_chunk_size, x_f16.shape[0])
         chunk_x_f32 = x_f16[start:end].astype('float32')
         chunk_sim, chunk_ind = gpu_index_y.search(chunk_x_f32, knn_neighbors)
@@ -168,7 +171,7 @@ def align_corpora(args):
         del chunk_x_f32
 
     del gpu_index_y
-    gc.collect() # Completely wipes German index from VRAM/RAM
+    gc.collect() 
 
     # --- PASS B: Target to Source (Y -> X) ---
     print("\n[FAISS PASS 2/2] Loading English vectors into GPU Index...", flush=True)
@@ -179,12 +182,12 @@ def align_corpora(args):
     del x_f32
     gc.collect()
 
-    print("Loading German vectors and searching Source Index in chunks...", flush=True)
+    print("Searching Source Index in optimized chunks...", flush=True)
     y_f16 = np.load(trg_cache)
     y2x_sim = np.zeros((y_f16.shape[0], knn_neighbors), dtype=np.float32)
     y2x_ind = np.zeros((y_f16.shape[0], knn_neighbors), dtype=np.int64)
 
-    for start in range(0, y_f16.shape[0], search_chunk_size):
+    for start in tqdm.tqdm(range(0, y_f16.shape[0], search_chunk_size), desc="Source Search Progress"):
         end = min(start + search_chunk_size, y_f16.shape[0])
         chunk_y_f32 = y_f16[start:end].astype('float32')
         chunk_sim, chunk_ind = gpu_index_x.search(chunk_y_f32, knn_neighbors)
@@ -193,7 +196,7 @@ def align_corpora(args):
         del chunk_y_f32
 
     del gpu_index_x
-    gc.collect() # Completely wipes English index from VRAM/RAM
+    gc.collect()
 
     # -----------------------------------------------------------------
     # STEP 3: MARGIN-BASED SCORING
