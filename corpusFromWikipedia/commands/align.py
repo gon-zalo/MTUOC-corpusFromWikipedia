@@ -87,9 +87,7 @@ def align_corpora(args):
                 outdir.mkdir(parents=True, exist_ok=True)
         else: # else just save the file in the same input directory
             outdir = indir
-    # -----------------------------------------------------------------
-    # CONFIGURATION & PARAMETERS
-    # -----------------------------------------------------------------
+
     gpus_num = torch.cuda.device_count()
     devices_num = [f"cuda:{i}" for i in range(gpus_num)]
     print(f"Visible GPUs: {devices_num}", flush=True)
@@ -101,9 +99,6 @@ def align_corpora(args):
     chunk_size = 50000
     batch_size = 512
 
-    # -----------------------------------------------------------------
-    # LOAD SENTENCES
-    # -----------------------------------------------------------------
     print(f"Reading source ({source_lang_name}) file", flush=True)
     source_sentences = set()
     with file_open(source_file) as fIn:
@@ -120,22 +115,38 @@ def align_corpora(args):
             if min_sent_len <= len(line) <= max_sent_len:
                 target_sentences.add(line)
 
-    source_sentences = list(source_sentences)
-    target_sentences = list(target_sentences)
+    source_sentences = sorted(list(source_sentences))
+    target_sentences = sorted(list(target_sentences))
+    
     print(f"Source Sentences: {len(source_sentences)} | Target Sentences: {len(target_sentences)}", flush=True)
 
-    # -----------------------------------------------------------------
-    # STEP 1: CHECKPOINT ENCODING LOGIC
-    # -----------------------------------------------------------------
     src_cache = indir / "embeddings-de.npy"
     trg_cache = indir / "embeddings-en.npy"
 
     if src_cache.exists() and trg_cache.exists():
         print("\n[FOUND] Existing embedding checkpoints! Skipping encoding phase.", flush=True)
+    else:
+        print("\n[ENCODING] Starting embedding generation...", flush=True)
+        model = SentenceTransformer('LaBSE')
+        pool = model.start_multi_process_pool(target_devices=devices_num)
+        
+        print("Encoding source sentences...", flush=True)
+        source_embeddings = model.encode(source_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
+        source_embeddings = source_embeddings.astype(np.float16)
+        np.save(src_cache, source_embeddings)
+        
+        del source_embeddings
+        gc.collect()
 
-    # -----------------------------------------------------------------
-    # STEP 2: SEQUENTIAL FAISS SEARCH (The Single Pass Fix)
-    # -----------------------------------------------------------------
+        print("Encoding target sentences...", flush=True)
+        target_embeddings = model.encode(target_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
+        target_embeddings = target_embeddings.astype(np.float16)
+        np.save(trg_cache, target_embeddings)
+        
+        del target_embeddings
+        model.stop_multi_process_pool(pool=pool)
+        gc.collect()
+    
     co = faiss.GpuMultipleClonerOptions()
     co.shard = True
     co.useFloat16 = True
@@ -197,9 +208,6 @@ def align_corpora(args):
     del gpu_index_x
     gc.collect()
 
-    # -----------------------------------------------------------------
-    # STEP 3: MARGIN-BASED SCORING
-    # -----------------------------------------------------------------
     print("\n[SCORING] Preparing margin calculation arrays...", flush=True)
     x2y_mean = x2y_sim.mean(axis=1)
     y2x_mean = y2x_sim.mean(axis=1)
@@ -210,9 +218,6 @@ def align_corpora(args):
     del x_f16, y_f16
     gc.collect()
 
-    # -----------------------------------------------------------------
-    # STEP 4: EXTRACT BEST MATCHES & WRITE TO FILE
-    # -----------------------------------------------------------------
     print("\n[ALIGNING] Processing final 100 million pair evaluations...", flush=True)
     fwd_best = x2y_ind[np.arange(x2y_sim.shape[0]), fwd_scores.argmax(axis=1)]
     bwd_best = y2x_ind[np.arange(y2x_sim.shape[0]), bwd_scores.argmax(axis=1)]
