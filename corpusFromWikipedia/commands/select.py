@@ -20,7 +20,9 @@ def select_corpus(args):
             print(f"Rescored segments file {file.name} found")
             stem = file.stem
             stem = stem.split("-")
-            file_codes = f'{stem[-2]}-{stem[-1]}' # getting both language codes from the file name
+            sl = stem[-2]
+            tl = stem[-1]
+            file_codes = f'{sl}-{tl}' # getting both language codes from the file name
             input_file = file
     print("")
     output_file = outdir / f'selected-segments-{file_codes}.txt'
@@ -35,9 +37,9 @@ def select_corpus(args):
     else:
         minSBERT = float(minSBERT)
 
-    sl = file_codes[0:2]
-    tl = file_codes[-2:]
 
+    print(f"sl: {sl} / tl: {tl}")
+    
     sortida=open(output_file,"w",encoding="utf-8")
     entrada=open(input_file,"r",encoding="utf-8")
 
