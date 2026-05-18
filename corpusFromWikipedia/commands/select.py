@@ -10,7 +10,8 @@ def select_corpus(args):
 
     outdir = outdir or indir
     outdir = Path(outdir)
-    min_chars = args.min_chars
+    min_chars = args.min_chars or 0
+
 
     file_codes = ''
     print("")
@@ -61,7 +62,8 @@ def select_corpus(args):
         
         if sllang==sl and slconf>=sldc and tllang==tl and tlconf>=tldc and sbert>=minSBERT and len(slsegment) >= min_chars and len(tlsegment) >= min_chars:
             cadena=slsegment+"\t"+tlsegment
-            print(cadena)
+            segment_count += 1
+            # print(cadena)
             sortida.write(cadena+"\n")
 
     print(f'{segment_count} segments saved')
