@@ -59,14 +59,14 @@ def align_corpora(args):
 
     if len(input_directories) == 1:
         folder_name = input_directories[0]
-        folder_name = folder_name.split("-")
+        folder_name = folder_name.stem.split("-")
         source_lang_code = folder_name[-2]
         target_lang_code = folder_name[-1]
     elif len(input_directories) == 2:
         source_folder_name = input_directories[0]
         target_folder_name = input_directories[1]
-        source_lang_code = source_folder_name.split("-")[-1]
-        target_lang_code = target_folder_name.split("-")[-1]
+        source_lang_code = source_folder_name.stem.split("-")[-1]
+        target_lang_code = target_folder_name.stem.split("-")[-1]
         
     unique_segments_files = []
     for indir in input_directories:
