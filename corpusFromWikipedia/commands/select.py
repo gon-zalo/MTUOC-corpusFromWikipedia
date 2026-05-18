@@ -27,7 +27,6 @@ def select_corpus(args):
     print("")
     output_file = outdir / f'selected-segments-{file_codes}.txt'
 
-
     sldc = args.sldc
     tldc = args.tldc
     minSBERT = args.minSBERT
@@ -37,9 +36,6 @@ def select_corpus(args):
     else:
         minSBERT = float(minSBERT)
 
-
-    print(f"sl: {sl} / tl: {tl}")
-    
     sortida=open(output_file,"w",encoding="utf-8")
     entrada=open(input_file,"r",encoding="utf-8")
 
