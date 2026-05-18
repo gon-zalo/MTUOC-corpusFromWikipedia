@@ -57,21 +57,32 @@ def align_corpora(args):
     if args.optional_indir:
         input_directories.append(Path(args.optional_indir))
 
+    if len(input_directories) == 1:
+        folder_name = input_directories[0]
+        folder_name = folder_name.split("-")
+        source_lang_code = folder_name[-2]
+        target_lang_code = folder_name[-1]
+    elif len(input_directories) == 2:
+        source_folder_name = input_directories[0]
+        target_folder_name = input_directories[1]
+        source_lang_code = source_folder_name.split("-")[-1]
+        target_lang_code = target_folder_name.split("-")[-1]
+        
     unique_segments_files = []
-    unique_segments_files_codes = []
-
     for indir in input_directories:
         for file in indir.iterdir():
-            if file.is_file() and file.name.startswith("unique-segments"):
+            if file.is_file() and file.stem == f"unique-segments-{source_lang_code}":
                 print(f"Unique segments file {file.name} found", flush=True)
                 unique_segments_files.append(file)
-                language_code = file.stem.split("-")
-                unique_segments_files_codes.append(language_code[-1])
+            elif file.is_file() and file.stem == f"unique-segments-{target_lang_code}":
+                unique_segments_files.append(file)
+    
+    for file in unique_segments_files:
+        print(f"Unique segments file {file.name} found", flush=True)
 
     source_file, target_file = unique_segments_files
-    source_file_code, target_file_code = unique_segments_files_codes
-    source_lang_name, source_lang_code = get_language(source_file_code)
-    target_lang_name, target_lang_code = get_language(target_file_code)
+    source_lang_name, source_lang_code = get_language(source_lang_code)
+    target_lang_name, target_lang_code = get_language(target_lang_code)
     print(f"\nAligning {source_lang_name} and {target_lang_name}\n", flush=True)
 
     outdir = args.outdir
