@@ -86,6 +86,7 @@ def cli():
     select_parser.add_argument("--sldc", type=float, help="The minimum source language detection confidence. Default value is 0.75", required=False, default=0.75)
     select_parser.add_argument("--tldc", type=float, help="The minimum target language detection confidence. Default value is 0.75", required=False, default=0.75)
     select_parser.add_argument("--minSBERT", type=float, help="The minimum value for SBERT cosine similarity score to select a segment pair. Default value is 0.75", required=False, default=0.75)
+    select_parser.add_argument("--min-chars", type=int, help="Minimum character length of selected segments. By default, segments of any length are selected but with this flag short segments can be ignored. Default: 0.", required=False)
     select_parser.add_argument("--outdir", type=str, help="Output directory in which to save the selected segments file. If not specified, it will be saved in the same directory as the input file.")
     select_parser.set_defaults(func=select_corpus)
 
