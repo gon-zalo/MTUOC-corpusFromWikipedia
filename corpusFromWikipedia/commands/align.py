@@ -71,11 +71,11 @@ def align_corpora(args):
     unique_segments_files = []
     for indir in input_directories:
         for file in indir.iterdir():
-            if file.is_file() and file.stem == f"unique-segments-{source_lang_code}":
+            if file.is_file() and file.stem.startswith("unique-segments") and file.stem.endswith(source_lang_code):
                 unique_segments_files.append(file)
-            if file.is_file() and file.stem == f"unique-segments-{target_lang_code}":
+            if file.is_file() and file.stem.startswith("unique-segments") and file.stem.endswith(target_lang_code):
                 unique_segments_files.append(file)
-    
+    print("")
     for file in unique_segments_files:
         print(f"Unique segments file {file.name} found", flush=True)
 
@@ -244,7 +244,7 @@ def align_corpora(args):
 
     seen_src, seen_trg = set(), set()
     sentences_written = 0
-    outfile = outdir / f'aligned-segments-{source_file_code}-{target_file_code}.txt'
+    outfile = outdir / f'aligned-segments-{source_lang_code}-{target_lang_code}.txt'
     
     print(f"Writing alignments to: {outfile}", flush=True)
     with open(outfile, 'w', encoding='utf-8') as fOut:
