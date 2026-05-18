@@ -72,9 +72,8 @@ def align_corpora(args):
     for indir in input_directories:
         for file in indir.iterdir():
             if file.is_file() and file.stem == f"unique-segments-{source_lang_code}":
-                print(f"Unique segments file {file.name} found", flush=True)
                 unique_segments_files.append(file)
-            elif file.is_file() and file.stem == f"unique-segments-{target_lang_code}":
+            if file.is_file() and file.stem == f"unique-segments-{target_lang_code}":
                 unique_segments_files.append(file)
     
     for file in unique_segments_files:
