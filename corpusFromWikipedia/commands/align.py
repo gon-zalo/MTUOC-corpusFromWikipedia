@@ -73,13 +73,14 @@ def align_corpora(args):
         for file in indir.iterdir():
             if file.is_file() and file.stem.startswith("unique-segments") and file.stem.endswith(source_lang_code):
                 unique_segments_files.append(file)
+                source_file = file
             if file.is_file() and file.stem.startswith("unique-segments") and file.stem.endswith(target_lang_code):
                 unique_segments_files.append(file)
+                target_file = file
     print("")
     for file in unique_segments_files:
         print(f"Unique segments file {file.name} found", flush=True)
 
-    source_file, target_file = unique_segments_files
     source_lang_name, source_lang_code = get_language(source_lang_code)
     target_lang_name, target_lang_code = get_language(target_lang_code)
     print(f"\nAligning {source_lang_name} and {target_lang_name}\n", flush=True)
@@ -130,32 +131,27 @@ def align_corpora(args):
     
     print(f"Source Sentences: {len(source_sentences)} | Target Sentences: {len(target_sentences)}", flush=True)
 
-    src_cache = indir / "embeddings-de.npy"
-    trg_cache = indir / "embeddings-en.npy"
+    src_cache = indir / f"embeddings-{source_lang_code}.npy"
+    trg_cache = indir / f"embeddings-{target_lang_code}.npy"
 
-    if src_cache.exists() and trg_cache.exists():
-        print("\n[FOUND] Existing embedding checkpoints! Skipping encoding phase.", flush=True)
-    else:
-        print("\n[ENCODING] Starting embedding generation...", flush=True)
-        model = SentenceTransformer('LaBSE')
-        pool = model.start_multi_process_pool(target_devices=devices_num)
-        
-        print("Encoding source sentences...", flush=True)
-        source_embeddings = model.encode(source_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
-        source_embeddings = source_embeddings.astype(np.float16)
-        np.save(src_cache, source_embeddings)
-        
-        del source_embeddings
-        gc.collect()
+    model = SentenceTransformer('LaBSE')
+    pool = model.start_multi_process_pool(target_devices=devices_num)
+    print("Encoding source sentences...", flush=True)
+    source_embeddings = model.encode(source_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
+    source_embeddings = source_embeddings.astype(np.float16)
+    np.save(src_cache, source_embeddings)
+    
+    del source_embeddings
+    gc.collect()
 
-        print("Encoding target sentences...", flush=True)
-        target_embeddings = model.encode(target_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
-        target_embeddings = target_embeddings.astype(np.float16)
-        np.save(trg_cache, target_embeddings)
-        
-        del target_embeddings
-        model.stop_multi_process_pool(pool=pool)
-        gc.collect()
+    print("Encoding target sentences...", flush=True)
+    target_embeddings = model.encode(target_sentences, pool=pool, show_progress_bar=True, chunk_size=chunk_size, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
+    target_embeddings = target_embeddings.astype(np.float16)
+    np.save(trg_cache, target_embeddings)
+    
+    del target_embeddings
+    model.stop_multi_process_pool(pool=pool)
+    gc.collect()
     
     co = faiss.GpuMultipleClonerOptions()
     co.shard = True
@@ -164,7 +160,7 @@ def align_corpora(args):
     search_chunk_size = 4096
 
     # --- PASS A: Source to Target (X -> Y) ---
-    print("\n[FAISS PASS 1/2] Loading German vectors into GPU Index...", flush=True)
+    print(f"\nLoading {source_lang_name} vectors into GPU Index...", flush=True)
     y_f16 = np.load(trg_cache)
     y_f32 = y_f16.astype('float32')
     del y_f16
@@ -194,7 +190,7 @@ def align_corpora(args):
     gc.collect() 
 
     # --- PASS B: Target to Source (Y -> X) ---
-    print("\n[FAISS PASS 2/2] Loading English vectors into GPU Index...", flush=True)
+    print(f"\nLoading {target_lang_name} vectors into GPU Index...", flush=True)
     x_f32 = x_f16.astype('float32')
     cpu_index_x = faiss.IndexFlatIP(x_f32.shape[1])
     gpu_index_x = faiss.index_cpu_to_all_gpus(cpu_index_x, co, ngpu=gpus_num)
@@ -218,7 +214,7 @@ def align_corpora(args):
     del gpu_index_x
     gc.collect()
 
-    print("\n[SCORING] Preparing margin calculation arrays...", flush=True)
+    print("\nPreparing margin calculation arrays...", flush=True)
     x2y_mean = x2y_sim.mean(axis=1)
     y2x_mean = y2x_sim.mean(axis=1)
 
@@ -228,7 +224,7 @@ def align_corpora(args):
     del x_f16, y_f16
     gc.collect()
 
-    print("\n[ALIGNING] Processing final 100 million pair evaluations...", flush=True)
+    print("\nProcessing pair evaluations...", flush=True)
     fwd_best = x2y_ind[np.arange(x2y_sim.shape[0]), fwd_scores.argmax(axis=1)]
     bwd_best = y2x_ind[np.arange(y2x_sim.shape[0]), bwd_scores.argmax(axis=1)]
 
