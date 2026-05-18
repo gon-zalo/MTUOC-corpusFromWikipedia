@@ -260,3 +260,6 @@ def align_corpora(args):
                 sentences_written += 1
 
     print(f"\n{sentences_written} sentences successfully aligned.\nAligned segments file saved.")
+
+    src_cache.unlink()
+    trg_cache.unlink()
