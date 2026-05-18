@@ -40,6 +40,8 @@ def select_corpus(args):
     sortida=open(output_file,"w",encoding="utf-8")
     entrada=open(input_file,"r",encoding="utf-8")
 
+    segment_count = 0
+
     for linia in entrada:
         linia=linia.rstrip()
         camps=linia.split("\t")
@@ -59,5 +61,7 @@ def select_corpus(args):
         
         if sllang==sl and slconf>=sldc and tllang==tl and tlconf>=tldc and sbert>=minSBERT and len(slsegment) >= min_chars and len(tlsegment) >= min_chars:
             cadena=slsegment+"\t"+tlsegment
+            print(cadena)
             sortida.write(cadena+"\n")
-    print('Selected segments saved')
+
+    print(f'{segment_count} segments saved')
