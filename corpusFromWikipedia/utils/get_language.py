@@ -1,4 +1,8 @@
 def get_language(language):
+    '''Get the language name and its two letter ISO code from an input that can be two letter or three letter ISO code or the full language name.
+    
+    Returns
+        language_name, language_code'''
     import pycountry
     # input is iso 2 letter code or full name of the language, output is name and 2 letter iso code
     if len(language) == 2: # if language is 2 letter iso code
