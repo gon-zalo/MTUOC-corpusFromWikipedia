@@ -7,3 +7,4 @@ cfw/commands/__pycache__/
 cfw/utils/__pycache__/
 .vscode/settings.json
 cfw/commands/old_align.py
+*-info

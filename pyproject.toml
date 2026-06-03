@@ -21,8 +21,8 @@ dependencies = [
 ]
 
 [project.scripts]
-corpusFromWikipedia = cfw.cli:main
-cfw = cfw.cli:main
+corpusFromWikipedia = "cfw.cli:cli"
+cfw = "cfw.cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]
