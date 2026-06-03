@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "corpusFromWikipedia"
 version = "0.9.0"
-description = "Tool to create corpora from Wikipedia dumps
+description = "Tool to create corpora from Wikipedia dumps"
 requires-python = ">= 3.10"
 dependencies = [
     "faiss-gpu",
