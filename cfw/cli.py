@@ -38,10 +38,10 @@ def cli():
     create_parser = subparsers.add_parser("create", help="Create a corpus from Wikipedia.", description="Create a corpus or parallel corpora from Wikipedia dumps.")
     create_parser.add_argument('lang1', help='Name or ISO code of the source language.')
     create_parser.add_argument('lang2', help='Name or ISO code of the target language. Keep empty to create a monolingual corpus.', nargs="?", default=None)
-    create_parser.add_argument("--categories", action="store", help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,).', required=False)
-    create_parser.add_argument('--depth', type=int, help='The category level depth.', required=False)
+    create_parser.add_argument("-c", "--categories", action="store", help='Wikipedia categories to search. Must be in between quotation marks ("") and separated by a comma (,).', required=False)
+    create_parser.add_argument("-d", '--depth', type=int, help='Recursion depth for traversing the category tree.', required=False)
     create_parser.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalent L1 pages.', required=False)
-    create_parser.add_argument('--database', action="store", dest="database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite', default= 'database/CCWikipedia-20251201.sqlite', required=False)
+    create_parser.add_argument('--database', help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite', default= 'database/CCWikipedia-20251201.sqlite', required=False)
     create_parser.add_argument('--dumps', help='Wikipedia dumps path. Default: dumps/', default="dumps", required=False)   
     create_parser.add_argument('--outdir', help='Name of the output directory. Default: corpora-lang1-lang2/. Language codes will be added automatically.',required=False)
     create_parser.add_argument('--continue', dest='continue_creation', help='Continue a previously interrupted corpora creation process.', action='store_true', required=False)
@@ -51,9 +51,8 @@ def cli():
     segment_parser = subparsers.add_parser("segment", help="Segment the extracted corpus.", description="Segment all text files in a folder. The folder name must contain a language code at the end separated by a hyphen from the rest. If you have created a corpus using the 'create' command, this folder is named 'pages-en'. The output is a 'segments' folder and a 'unique-segments' text file with the language ISO code at the end.")
     segment_parser.add_argument("indir", help="Folder where the corpus to segment is stored, i.e., the 'pages-en' folder. The name must contain a hyphen and a language code at the end.")
     segment_parser.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", default='segment.srx', required=False)
-    segment_parser.add_argument("--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
-    segment_parser.add_argument("--force-srx-lang", help="Override the default SRX language configuration if your language is not available in the file. Yoy may use one of the following: Default, Generic, ByLineBreak or ByTwoLineBreaks.", required=False)
-    segment_parser.add_argument("--force-segmenter", help="Use a Stanza sentence segmenter instead of SRX. Note that it is slower than the SRX implementation, but useful if your language is supported in this library and not in the SRX file.", required=False)
+    segment_parser.add_argument("--force-srx-lang", help="Override the default SRX language configuration if your language is not available in the file. You may use one of the following: Default, Generic, ByLineBreak or ByTwoLineBreaks.", required=False)
+    segment_parser.add_argument("--force-segmenter", help="Use a Stanza sentence segmenter instead of SRX. Note that it is slower than the SRX implementation, but useful if your language is supported in this library and not in the SRX file.", required=False, action="store_true")
     segment_parser.add_argument("--chunk", help="Compile the whole corpus in chunks before segmenting. If the corpus is made up of millions of files, the time saved is massive. Note that individual segmented articles will not be available.", action="store_true", required=False)
     segment_parser.add_argument("--outdir", type=str, help="Output directory in which to save the segmented files. If not specified, it will be saved in the same directory as the input file.", required=False)
     segment_parser.set_defaults(func=segment_corpus)
@@ -61,19 +60,18 @@ def cli():
 # ALIGN SUBPARSER
     align_parser = subparsers.add_parser("align", help="Perform bitext mining and alignment between two corpora.", description="Bitext mine and align parallel sentences from two lists of monolingual sentences. The input directory can be a folder where both corpora are located, e.g. corpus-ca-en/ if your aim is to create a parallel corpus, or two different folders (e.g. corpus-en/ corpus-ca/). The tool automatically looks for the unique segments files in both languages. The output is an aligned segments text file.")
     align_parser.add_argument("indir", help="Path to the folder that contains the unique segments files (e.g. corpus-en-ca/).")
-    align_parser.add_argument("optional_indir", nargs='?', help="Use this argument too if your corpora are located in separate folders (e.g. corpus-en/ corpus-ca/)", default=None)
+    align_parser.add_argument("optional_indir", nargs='?', help="Use this argument too if your corpora are located in separate folders (e.g. corpus-en/ corpus-ca/).", default=None)
     align_parser.add_argument("-dev", "--device", choices=["gpu", "cpu"], default="gpu", dest="device", help="Device used (GPU or CPU). Default: GPU.", required=False)
-    # align_parser.add_argument("--gpu-id", help="GPU id to use if --device gpu. Default: 0.")
-    # align_parser.add_argument("--file-by-file", help="Align segments file by file, as opposed to in bulk" , default=True, action="store_true", required=False) # not implemented
-    # align_parser.add_argument("--mode", type=str, choices=["safe", "balanced", "fast"], default="balanced", help="Preset performance mode for computation of embeddings. It automatically controls batch and chunk sizes. If you want specific settings use the flags --batch-size and --chunk-size. Default: balanced.")
-    # align_parser.add_argument("--batch-size", type=int, help="")
-    # align_parser.add_argument("--chunk-size", type=int, help="")
-    align_parser.add_argument("--load-embeddings", help="Load encoded embeddings that are saved in disk from a previous run.", action="store_true", required=False)
+    align_parser.add_argument("--mode", type=str, choices=["safe", "balanced", "fast"], default="safe", help="Preset performance mode for computation of embeddings. 'safe' is meant for consumer hardware (8GB VRAM). 'balanced' is meant for workstations (24GB VRAM). 'fast' is meant for high-performance computing servers (80GB+ VRAM). Default: safe.")
+    # align_parser.add_argument("--batch-size", type=int, help="Override neural network batch size. Controls VRAM usage during text encoding. Recommended: powers of 2 (e.g., 64 for 8GB GPUs, 256 for 24GB GPUs...). Max recommended: 512.")
+    # align_parser.add_argument("--chunk-size", type=int, help="Override CPU text-reading chunk size. Controls RAM usage and CPU-to-GPU feed rate. Recommended: 10000 to 50000.")
+    # align_parser.add_argument("--search-chunk-size", type=int, help="Override FAISS GPU search chunk. Must be a power of 2. Recommended: 1024, 2048, or (maximum) 4096")
+    # align_parser.add_argument("--load-embeddings", help="Load encoded embeddings that are saved in disk from a previous run.", action="store_true", required=False)
     align_parser.add_argument("--outdir", help="Output directory in which to save the aligned segments files. If not specified, it will be saved in the same directory as the input file.", required=False)
     align_parser.set_defaults(func=align_corpora)
 
 # RESCORE SUBPARSER
-    rescore_parser = subparsers.add_parser("rescore", help="Rescore the corpora using more computationally expensive models.", description="Rescore previously aligned corpora. The aligned segments are evaluated using more computationally expensive models. The input file should be a text file of aligned segments containing the ISO language codes, e.g.: 'aligned-segments-en-es.txt'. The output file is a rescored segments text file.")
+    rescore_parser = subparsers.add_parser("rescore", help="Rescore the alignment using more computationally expensive models.", description="Rescore previously aligned corpora. The aligned segments are evaluated using more computationally expensive models. The input file should be a text file of aligned segments containing the ISO language codes, e.g.: 'aligned-segments-en-es.txt'. The output file is a rescored segments text file.")
     rescore_parser.add_argument("indir", help="Path to the folder that contains an aligned segments file.")
     rescore_parser.add_argument("--SEmodel", help="Sentence Transformers embeddings model. Default model: LaBSE", required=False, default="LaBSE")
     rescore_parser.add_argument("--LDmodel", help="The fastText language detection model. Default model: lid.176.bin", required=False, default="lid.176.bin")
@@ -86,11 +84,11 @@ def cli():
     select_parser.add_argument("--sldc", type=float, help="The minimum source language detection confidence. Default value is 0.75", required=False, default=0.75)
     select_parser.add_argument("--tldc", type=float, help="The minimum target language detection confidence. Default value is 0.75", required=False, default=0.75)
     select_parser.add_argument("--minSBERT", type=float, help="The minimum value for SBERT cosine similarity score to select a segment pair. Default value is 0.75", required=False, default=0.75)
-    select_parser.add_argument("--min-chars", type=int, help="Minimum character length of selected segments. By default, segments of any length are selected but with this flag short segments can be ignored. Default: 0.", required=False)
+    select_parser.add_argument("--min-chars", type=int, help="Minimum character length of selected segments. By default, segments of any length are selected. Short segments can be ignored using this flag.  Default: 0.", required=False)
     select_parser.add_argument("--outdir", type=str, help="Output directory in which to save the selected segments file. If not specified, it will be saved in the same directory as the input file.")
     select_parser.set_defaults(func=select_corpus)
 
-# PIPELINE SUBPARSER WIP
+# PIPELINE SUBPARSER
     pipeline_parser = subparsers.add_parser("pipeline", help="Execute the whole pipeline: create > segment > align > rescore > select", formatter_class=argparse.RawDescriptionHelpFormatter, description=
     ''' Run the following pipeline:
 
@@ -101,25 +99,27 @@ def cli():
         5. Filter the rescored parallel segments. ''')
     
     pipeline_parser.add_argument('lang1', help='Name or two letter ISO code of the source language.')
-    pipeline_parser.add_argument('lang2', help='Name or two letter ISO code of the target language. Keep empty for monolingual corpus.', nargs="?", default=None)
+    pipeline_parser.add_argument('lang2', help='Name or two letter ISO code of the target language.')
     pipeline_parser.add_argument("--outdir", help="Name of the output directory, default is: corpora. Language codes will be added after it, i.e.: corpora-lang1-lang2/", required=False)
     
     # CREATE OPTIONS
     create_group = pipeline_parser.add_argument_group("Create options")
-    create_group.add_argument('categories', help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,).')
-    create_group.add_argument('depth', type=int, help='The category level depth.')
-    create_group.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalent L1 pages.')
+    create_group.add_argument('--categories', action="store", help='Wikipedia categories to search. Must be in between quotation marks (""). If there is more than one, they must be separated by a comma (,).', required=False)
+    create_group.add_argument('--depth', type=int, help='The category level depth.', required=False)
+    create_group.add_argument('--restrict', action='store_true', help='Restrict L2 pages to equivalent L1 pages.', required=False)
     create_group.add_argument("--database", help='The CCW sqlite database to use. Default: database/CCWikipedia-20251201.sqlite', default='database/CCWikipedia-20251201.sqlite', required=False)
     create_group.add_argument('--dumps', help='Wikipedia dumps path. Default: dumps/', default='dumps',required=False)    
 
     # SEGMENT OPTIONS
     segment_group = pipeline_parser.add_argument_group("Segment options")
     segment_group.add_argument("--srxfile", type=str, help="The SRX file to use. Default: segment.srx", default='segment.srx', required=False)
-    segment_group.add_argument("-p", "--paramark", action="store_true", help="Add the <p> paragraph mark (useful for Hunalign).", required=False)
+    segment_group.add_argument("--force-srx-lang", help="Override the default SRX language configuration if your language is not available in the file. You may use one of the following: Default, Generic, ByLineBreak or ByTwoLineBreaks. Can choose between src and tgt.",nargs=2, metavar=("SIDE", "LANG"), action="append", required=False)
+    segment_group.add_argument("--force-segmenter", help="Use a Stanza sentence segmenter instead of SRX. Note that it is slower than the SRX implementation, but useful if your language is supported in this library and not in the SRX file. Can choose between src and tgt.", required=False, choices=["src", "tgt"], nargs="+")
+    segment_group.add_argument("--chunk", help="Compile the whole corpus in chunks before segmenting. If the corpus is made up of million s of files, the time saved is massive. Note that individual segmented articles will not be available.", action="store_true", required=False)
 
     # ALIGN OPTIONS
     align_group = pipeline_parser.add_argument_group("Align options")
-    align_group.add_argument("-dev", "--device", choices=['gpu', 'cpu'], default="gpu", help="The device used to align segments (GPU or CPU). Default: GPU.", required=False, dest='device')
+    align_group.add_argument("-dev", "--device", choices=["gpu", "cpu"], default="gpu", dest="device", help="Device used (GPU or CPU). Default: GPU.", required=False)
 
     # RESCORE OPTIONS
     rescore_group = pipeline_parser.add_argument_group("Rescore options")
@@ -131,6 +131,7 @@ def cli():
     select_group.add_argument("--sldc", type=float, help="The minimum source language detection confidence. Default: 0.75", required=False, default=0.75)
     select_group.add_argument("--tldc", type=float, help="The minimum target language detection confidence. Default: 0.75", required=False, default=0.75)
     select_group.add_argument("--minSBERT", type=float, help="The minimum value for SBERT cosine similarity score to select a segment pair. Default: 0.75", required=False, default=0.75)
+    select_group.add_argument("--min-chars", type=int, help="Minimum character length of selected segments. By default, segments of any length are selected. Short segments can be ignored using this flag. Default: 0.", required=False)
 
     pipeline_parser.set_defaults(func=pipeline)
 
