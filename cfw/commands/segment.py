@@ -220,18 +220,28 @@ def segment_corpus(args):
     force_segmenter = args.force_segmenter
     chunk = args.chunk
 
+    running_pipeline = args.running_pipeline
     indir = args.indir # should be the pages folder
     indir = Path(indir)
-    paramark=args.paramark
+
+    lang_code = args.lang_code # to use with pipeline
 
     outdir = args.outdir or indir
     
-    folder = indir
-    if folder.is_dir():
-        print(f"\nFolder {folder.name} found")
+    if indir.is_dir():
 
-        ending = folder.name.split("-") # splitting folder name to get the language code
-        ending = ending[-1]
+        if running_pipeline:
+            for folder in indir.iterdir():
+                if folder.is_dir() and folder.name.endswith(lang_code):
+                    print(f"\nFolder {folder.name} found")
+                    ending = lang_code
+                    indir = folder
+
+        else:
+            print(f"\nFolder {indir.name} found")
+            ending = indir.name.split("-") # splitting folder name to get the language code
+            ending = ending[-1]
+
         srxlang_name, srxlang_code = get_language(ending)
 
         if force_srx_lang:
@@ -265,7 +275,7 @@ def segment_corpus(args):
 
         # txt files
         if not chunk:
-            for text_file in folder.rglob("*.txt"): # accessing all txt files
+            for text_file in indir.rglob("*.txt"): # accessing all txt files
                 encoding = detect_encoding(text_file)
                 # reading the file
                 with open(text_file, "r", encoding=encoding, errors="ignore") as entrada:
@@ -281,8 +291,8 @@ def segment_corpus(args):
                                 segments = segmenta(linia, srxfile, srxlang_name.capitalize())
 
                             if len(segments) > 0:
-                                if paramark:
-                                    sortida.write("<p>\n")
+                                # if paramark:
+                                #     sortida.write("<p>\n")
 
                                 if not force_segmenter:
                                     sortida.write(segments + "\n")
@@ -300,7 +310,7 @@ def segment_corpus(args):
                 print(f"{chunks_folder} created")
                 file_names_folder.mkdir(parents=True, exist_ok=True)
 
-            chunk_corpus(pages_folder=folder, chunks_folder=chunks_folder)
+            chunk_corpus(pages_folder=indir, chunks_folder=chunks_folder)
             print("\nSegmenting chunks")
             for jsonl_file in tqdm(chunks_folder.rglob("*.jsonl")):
                 # reading the file
