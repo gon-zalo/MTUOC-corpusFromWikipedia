@@ -18,22 +18,20 @@ def file_open(filepath):
     else:
         return open(filepath, 'r', encoding='utf-8')
 
-def score_candidates_vectorized(x_f16, y_f16, candidate_inds, fwd_mean, bwd_mean):
-    """Vectorized margin-based scoring running in safe 1M row chunks."""
+def score_candidates_vectorized(x_f16, y_f16, candidate_inds, fwd_mean, bwd_mean, scoring_chunk_size):
+    """Vectorized margin-based scoring running in safe row chunks."""
     print("Computing vectorized margin scores...", flush=True)
     num_queries = x_f16.shape[0]
     k = candidate_inds.shape[1]
     scores = np.zeros((num_queries, k), dtype=np.float32)
-    
-    chunk_size = 1000000 
-    for start in range(0, num_queries, chunk_size):
-        end = min(start + chunk_size, num_queries)
+     
+    for start in range(0, num_queries, scoring_chunk_size):
+        end = min(start + scoring_chunk_size, num_queries)
         
         batch_x = x_f16[start:end].astype('float32') 
         batch_inds = candidate_inds[start:end]
         batch_y = y_f16[batch_inds].astype('float32') 
         
-        # Row-wise dot product using Einstein summation
         dots = np.einsum('id,ikd->ik', batch_x, batch_y)
         
         batch_fwd_mean = fwd_mean[start:end, np.newaxis]
@@ -102,13 +100,39 @@ def align_corpora(args):
     gpus_num = torch.cuda.device_count()
     devices_num = [f"cuda:{i}" for i in range(gpus_num)]
     print(f"Visible GPUs: {devices_num}", flush=True)
- 
+    
+    mode = args.mode
+    print(f"\nApplying '{mode.upper()}' performance mode...", flush=True)
+
+    if mode == 'fast':
+        # high end hardware (80gb vram, 128gb ram)
+        preset_batch = 512
+        preset_chunk = 50000
+        preset_search = 4096
+        scoring_chunk_size = 1000000  
+    elif mode == 'balanced':
+        # pro/medium hardware (24gb vram, 64gb ram)
+        preset_batch = 256
+        preset_chunk = 25000
+        preset_search = 2048
+        scoring_chunk_size = 500000
+    else: # 'safe'
+        # standard consumer hware (8gb vram, 16gb ram)
+        preset_batch = 64
+        preset_chunk = 10000
+        preset_search = 1024
+        scoring_chunk_size = 100000 
+
+    # if user overrides
+    batch_size = preset_batch
+    chunk_size = preset_chunk
+    search_chunk_size = preset_search
+
     min_sent_len = 10
     max_sent_len = 200
+
     knn_neighbors = 4
     min_threshold = 1
-    chunk_size = 50000
-    batch_size = 512
 
     print(f"Reading source ({source_lang_name}) file", flush=True)
     source_sentences = set()
@@ -159,7 +183,7 @@ def align_corpora(args):
     
     search_chunk_size = 4096
 
-    # --- PASS A: Source to Target (X -> Y) ---
+    # first pass, source to target
     print(f"\nLoading {source_lang_name} vectors into GPU Index...", flush=True)
     y_f16 = np.load(trg_cache)
     y_f32 = y_f16.astype('float32')
@@ -177,7 +201,7 @@ def align_corpora(args):
     x2y_sim = np.zeros((x_f16.shape[0], knn_neighbors), dtype=np.float32)
     x2y_ind = np.zeros((x_f16.shape[0], knn_neighbors), dtype=np.int64)
 
-    # Adding a progress bar here so you can literally watch the GPU fly through the batches
+    # prog bar
     for start in tqdm.tqdm(range(0, x_f16.shape[0], search_chunk_size), desc="Target Search Progress"):
         end = min(start + search_chunk_size, x_f16.shape[0])
         chunk_x_f32 = x_f16[start:end].astype('float32')
@@ -189,7 +213,7 @@ def align_corpora(args):
     del gpu_index_y
     gc.collect() 
 
-    # --- PASS B: Target to Source (Y -> X) ---
+    # pass b, target to source
     print(f"\nLoading {target_lang_name} vectors into GPU Index...", flush=True)
     x_f32 = x_f16.astype('float32')
     cpu_index_x = faiss.IndexFlatIP(x_f32.shape[1])
@@ -218,8 +242,8 @@ def align_corpora(args):
     x2y_mean = x2y_sim.mean(axis=1)
     y2x_mean = y2x_sim.mean(axis=1)
 
-    fwd_scores = score_candidates_vectorized(x_f16, y_f16, x2y_ind, x2y_mean, y2x_mean)
-    bwd_scores = score_candidates_vectorized(y_f16, x_f16, y2x_ind, y2x_mean, x2y_mean)
+    fwd_scores = score_candidates_vectorized(x_f16, y_f16, x2y_ind, x2y_mean, y2x_mean, scoring_chunk_size)
+    bwd_scores = score_candidates_vectorized(y_f16, x_f16, y2x_ind, y2x_mean, x2y_mean, scoring_chunk_size)
 
     del x_f16, y_f16
     gc.collect()
