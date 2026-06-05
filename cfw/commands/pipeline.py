@@ -20,7 +20,7 @@ def pipeline(args):
 
     outdir = outdir or 'corpus'
 
-    outputs_folder = Path('../corpora')
+    outputs_folder = Path('../corpora/parallel/')
     outdir = Path(outdir)
     corpora_folder = outputs_folder / f'{outdir}-{lang1_code}-{lang2_code}'
 
@@ -43,23 +43,56 @@ def pipeline(args):
         categories=categories, 
         depth=level, 
         restrict=restrict,
-        outdir=outdir)
+        outdir=outdir,
+        continue_creation=False)
     create_corpora(create_args)
 
 
     # segment args
     srxfile = args.srxfile
+
+    forced_srx = {}
+    for side, lang in args.force_srx_lang or []:
+        forced_srx[side] = lang
+
+    src_srx = forced_srx.get("src")
+    tgt_srx = forced_srx.get("tgt")
+    src_segmenter = False
+    tgt_segmenter = False
+    if args.force_segmenter:
+        if "src" in args.force_segmenter:
+            src_segmenter = True
+
+        if "tgt" in args.force_segmenter:
+            tgt_segmenter = True
+
+    chunk = args.chunk
+
     if not srxfile:
         srxfile = 'segment.srx'
-    paramark = args.paramark
 
     # segment corpora
-    segment_args = argparse.Namespace(
+    src_args = argparse.Namespace(
         srxfile=srxfile,  
-        paramark=paramark, 
+        force_srx_lang=src_srx,
+        force_segmenter=src_segmenter,
+        chunk=chunk,
         indir=corpora_folder,
-        outdir=corpora_folder)
-    segment_corpus(segment_args)
+        outdir=corpora_folder,
+        running_pipeline=True,
+        lang_code=lang1_code)
+    segment_corpus(src_args)
+
+    tgt_args = argparse.Namespace(
+        srxfile=srxfile,  
+        force_srx_lang=tgt_srx,
+        force_segmenter=tgt_segmenter,
+        chunk=chunk,
+        indir=corpora_folder,
+        outdir=corpora_folder,
+        running_pipeline=True,
+        lang_code=lang2_code)
+    segment_corpus(tgt_args)
 
 
     # align args
@@ -90,6 +123,7 @@ def pipeline(args):
     sldc = args.sldc
     tldc = args.tldc
     minSBERT = args.minSBERT
+    min_chars = args.min_chars
 
     # select segments
     select_args = argparse.Namespace(
@@ -97,5 +131,6 @@ def pipeline(args):
         sldc=sldc, 
         tldc=tldc, 
         minSBERT=minSBERT,
+        min_chars=min_chars,
         outdir=corpora_folder)
     select_corpus(select_args)
