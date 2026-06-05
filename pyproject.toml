@@ -17,11 +17,12 @@ dependencies = [
     "pycountry",
     "sentence-transformers",
     "mwxml",
-    "mwparserfromhell"
+    "mwparserfromhell",
+    "stanza"
 ]
 
 [project.scripts]
-corpusFromWikipedia = "cfw.cli:cli"
+corpus-from-wikipedia = "cfw.cli:cli"
 cfw = "cfw.cli:cli"
 
 [tool.setuptools.packages.find]
