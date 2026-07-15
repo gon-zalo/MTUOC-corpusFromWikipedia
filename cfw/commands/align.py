@@ -106,7 +106,7 @@ def align_corpora(args):
 
     if mode == 'fast':
         # high end hardware (80gb vram, 128gb ram)
-        preset_batch = 512
+        preset_batch = 256
         preset_chunk = 50000
         preset_search = 4096
         scoring_chunk_size = 1000000  
