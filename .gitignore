@@ -13,3 +13,4 @@ cfw/commands/old_align.py
 *.out
 cleaning.py
 logs/
+build/
