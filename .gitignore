@@ -8,3 +8,8 @@ cfw/utils/__pycache__/
 .vscode/settings.json
 cfw/commands/old_align.py
 *-info
+*.sh
+*.bin
+*.out
+cleaning.py
+logs/
