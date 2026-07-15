@@ -11,7 +11,7 @@ dependencies = [
     "faiss-gpu",
     "scikit-learn",
     "fasttext",
-    "numpy>=1.25",
+    "numpy>=1.26.4",
     "charset-normalizer",
     "lxml",
     "pycountry",
