@@ -106,7 +106,7 @@ def align_corpora(args):
 
     if mode == 'fast':
         # high end hardware (80gb vram, 128gb ram)
-        preset_batch = 256
+        preset_batch = 512
         preset_chunk = 50000
         preset_search = 4096
         scoring_chunk_size = 1000000  
@@ -265,7 +265,7 @@ def align_corpora(args):
     seen_src, seen_trg = set(), set()
     sentences_written = 0
     outfile = outdir / f'aligned-segments-{source_lang_code}-{target_lang_code}.txt'
-    
+    outfile = outdir
     print(f"Writing alignments to: {outfile}", flush=True)
     with open(outfile, 'w', encoding='utf-8') as fOut:
         for i in tqdm.tqdm(np.argsort(-scores), desc="Writing output"):
