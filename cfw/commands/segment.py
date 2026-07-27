@@ -220,7 +220,7 @@ def segment_corpus(args):
     force_segmenter = args.force_segmenter
     chunk = args.chunk
 
-        # running_pipeline = args.running_pipeline or None
+    # running_pipeline = args.running_pipeline or None
     indir = args.indir # should be the pages folder
     indir = Path(indir)
 
@@ -236,6 +236,12 @@ def segment_corpus(args):
         #             print(f"\nFolder {folder.name} found")
         #             ending = lang_code
         #             indir = folder
+
+        # else:
+        # next 3 lines inside else
+        print(f"\nFolder {indir.name} found")
+        ending = indir.name.split("-") # splitting folder name to get the language code
+        ending = ending[-1]
 
         # else:
         # next 3 lines inside else
