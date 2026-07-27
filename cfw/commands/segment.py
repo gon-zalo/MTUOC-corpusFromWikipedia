@@ -220,27 +220,28 @@ def segment_corpus(args):
     force_segmenter = args.force_segmenter
     chunk = args.chunk
 
-    running_pipeline = args.running_pipeline
+    # running_pipeline = args.running_pipeline or None
     indir = args.indir # should be the pages folder
     indir = Path(indir)
 
-    lang_code = args.lang_code # to use with pipeline
+    # lang_code = args.lang_code # to use with pipeline
 
     outdir = args.outdir or indir
     
     if indir.is_dir():
 
-        if running_pipeline:
-            for folder in indir.iterdir():
-                if folder.is_dir() and folder.name.endswith(lang_code):
-                    print(f"\nFolder {folder.name} found")
-                    ending = lang_code
-                    indir = folder
+        # if running_pipeline:
+        #     for folder in indir.iterdir():
+        #         if folder.is_dir() and folder.name.endswith(lang_code):
+        #             print(f"\nFolder {folder.name} found")
+        #             ending = lang_code
+        #             indir = folder
 
-        else:
-            print(f"\nFolder {indir.name} found")
-            ending = indir.name.split("-") # splitting folder name to get the language code
-            ending = ending[-1]
+        # else:
+        # next 3 lines inside else
+        print(f"\nFolder {indir.name} found")
+        ending = indir.name.split("-") # splitting folder name to get the language code
+        ending = ending[-1]
 
         srxlang_name, srxlang_code = get_language(ending)
 
